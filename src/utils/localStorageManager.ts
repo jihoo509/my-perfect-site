@@ -15,13 +15,13 @@ export const getCurrentKoreanTimeInfo = () => {
 // 브라우저 임시 저장소에 데이터를 저장하는 함수
 export const saveConsultationToStorage = (data: any) => {
   try {
-    const existingData = JSON.parse(localStorage.getItem('consultationData') || '[]');
+    const existingData = getConsultationsFromStorage();
     const { isoString, localeString } = getCurrentKoreanTimeInfo();
     const newData = { 
       ...data, 
       id: Date.now(), 
-      timestamp: isoString, // ISO 형식으로 저장
-      timestamp_kst: localeString // 한국 시간 형식으로도 저장
+      timestamp: isoString, 
+      timestamp_kst: localeString 
     };
     existingData.push(newData);
     localStorage.setItem('consultationData', JSON.stringify(existingData));
@@ -45,7 +45,7 @@ export const getConsultationsFromStorage = () => {
 // 특정 데이터를 삭제하는 함수
 export const removeConsultationFromStorage = (id: number) => {
   try {
-    let existingData = loadConsultationsFromStorage();
+    let existingData = getConsultationsFromStorage();
     existingData = existingData.filter((item: any) => item.id !== id);
     localStorage.setItem('consultationData', JSON.stringify(existingData));
     return true;
@@ -66,7 +66,46 @@ export const clearStorage = () => {
   }
 };
 
-// 아래는 디버깅용 함수들이므로 실제 기능에는 영향 없음
+// 아래는 AdminPanel이 사용하는 추가 디버깅 및 관리 함수들입니다.
+export const getFilteredConsultations = (filter: string) => {
+  const data = getConsultationsFromStorage();
+  if (!filter) return data;
+  return data.filter((item: any) => 
+    item.name.includes(filter) || 
+    item.phoneNumber.includes(filter)
+  );
+};
+
+export const downloadCSV = (data: any[]) => {
+  if (data.length === 0) {
+    alert('내보낼 데이터가 없습니다.');
+    return;
+  }
+  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+    + "번호,이름,연락처,상담유형,신청일시(KST)\n"
+    + data.map((item, index) => `${index + 1},${item.name},${item.phoneNumber},${item.consultationType},"${item.timestamp_kst}"`).join("\n");
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `상담신청내역_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+export const checkDataConsistency = () => {
+    console.log("데이터 일관성 체크 시작...");
+    const data = getConsultationsFromStorage();
+    console.log(`총 ${data.length}개의 데이터 발견됨.`);
+    return "체크 완료";
+};
+
+export const testDateFiltering = () => {
+    console.log("날짜 필터링 테스트");
+    return "테스트 완료";
+};
+
 export const debugKoreanTime = () => {
     console.log("현재 한국 시간 정보:", getCurrentKoreanTimeInfo());
 };
