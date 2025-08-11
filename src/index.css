@@ -108,3 +108,31 @@ body::after {
 body {
   outline: 8px solid red !important;
 }
+/* === Figma 인풋 톤(밝은 흰색)으로 덮어쓰기 === */
+.form-card input,
+.form-card select,
+.form-card textarea{
+  background: #ffffff !important;
+  color: #0f172a !important;               /* 진한 남색 텍스트 */
+  border: 1px solid rgba(15,23,42,.14) !important; /* 은은한 테두리 */
+}
+
+.form-card input::placeholder,
+.form-card textarea::placeholder{
+  color: #6b7280 !important;               /* 회색 플레이스홀더 */
+}
+
+.form-card input:focus,
+.form-card select:focus,
+.form-card textarea:focus{
+  outline: none !important;
+  border-color: #B87A36 !important;        /* 버튼 골드와 통일 */
+  box-shadow: 0 0 0 3px rgba(184,122,54,.25) !important;
+}
+
+/* 크롬 자동완성 배경이 누래지는 것 방지 */
+.form-card input:-webkit-autofill{
+  -webkit-text-fill-color: #0f172a !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  caret-color: #0f172a;
+}
