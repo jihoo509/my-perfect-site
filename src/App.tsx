@@ -260,7 +260,7 @@ export default function App() {
       <div className="relative z-10 w-full max-w-7xl mx-auto pt-6 lg:pt-8 container section">
         {/* 상단 제목 (Figma 스타일 클래스 적용) */}
         <div className="text-center mb-8 lg:mb-12">
-          <h1 className="hero-title">치아보험 전문가</h1>
+          <h1 className="hero-title">치아보험 전문가 [TEST]</h1>
           <p className="hero-sub">1:1 무료 매칭 신청</p>
         </div>
 
