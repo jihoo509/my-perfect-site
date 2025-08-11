@@ -12,6 +12,17 @@ export const getCurrentKoreanTimeInfo = () => {
   };
 };
 
+// 저장된 모든 데이터를 불러오는 함수
+export const getConsultationsFromStorage = () => {
+  try {
+    const data = localStorage.getItem('consultationData');
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error("로컬 스토리지에서 불러오기 실패:", error);
+    return [];
+  }
+};
+
 // 브라우저 임시 저장소에 데이터를 저장하는 함수
 export const saveConsultationToStorage = (data: any) => {
   try {
@@ -29,16 +40,6 @@ export const saveConsultationToStorage = (data: any) => {
   } catch (error) {
     console.error("로컬 스토리지에 저장 실패:", error);
     return null;
-  }
-};
-
-// 저장된 모든 데이터를 불러오는 함수
-export const getConsultationsFromStorage = () => {
-  try {
-    return JSON.parse(localStorage.getItem('consultationData') || '[]');
-  } catch (error) {
-    console.error("로컬 스토리지에서 불러오기 실패:", error);
-    return [];
   }
 };
 
@@ -66,9 +67,8 @@ export const clearStorage = () => {
   }
 };
 
-// 아래는 AdminPanel이 사용하는 추가 디버깅 및 관리 함수들입니다.
-export const getFilteredConsultations = (filter: string) => {
-  const data = getConsultationsFromStorage();
+// AdminPanel이 사용하는 추가 함수들
+export const getFilteredConsultations = (data: any[], filter: string) => {
   if (!filter) return data;
   return data.filter((item: any) => 
     item.name.includes(filter) || 
@@ -94,29 +94,32 @@ export const downloadCSV = (data: any[]) => {
   document.body.removeChild(link);
 };
 
-export const checkDataConsistency = () => {
-    console.log("데이터 일관성 체크 시작...");
-    const data = getConsultationsFromStorage();
-    console.log(`총 ${data.length}개의 데이터 발견됨.`);
-    return "체크 완료";
+export const updateConsultationStatus = (id: number, status: string) => {
+    let data = getConsultationsFromStorage();
+    const index = data.findIndex((item: any) => item.id === id);
+    if (index !== -1) {
+        data[index].status = status;
+        localStorage.setItem('consultationData', JSON.stringify(data));
+    }
 };
 
-export const testDateFiltering = () => {
-    console.log("날짜 필터링 테스트");
-    return "테스트 완료";
+export const generateDemoData = () => {
+    const demoData = [
+        { name: '김민준', phoneNumber: '010-1111-2222', consultationType: 'phone' },
+        { name: '이서연', phoneNumber: '010-3333-4444', consultationType: 'online' }
+    ];
+    demoData.forEach(item => saveConsultationToStorage(item));
+    return getConsultationsFromStorage();
 };
 
-export const debugKoreanTime = () => {
-    console.log("현재 한국 시간 정보:", getCurrentKoreanTimeInfo());
-};
-
+// 디버깅용 함수들
+export const debugKoreanTime = () => console.log("현재 한국 시간 정보:", getCurrentKoreanTimeInfo());
 export const compareTimeZones = () => {
     const localTime = new Date();
     const koreanTimeInfo = getCurrentKoreanTimeInfo();
     console.log("브라우저 시간:", localTime.toLocaleString());
     console.log("계산된 한국시간:", koreanTimeInfo.localeString);
 };
-
-export const testKoreanTime = () => {
-    return "Test function executed";
-};
+export const testKoreanTime = () => "Test function executed";
+export const testDateFiltering = () => "Date filtering test completed";
+export const checkDataConsistency = () => "Data consistency check completed";
