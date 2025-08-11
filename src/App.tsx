@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
-// 경로 수정: './' -> '../'
-import { PhoneConsultationForm } from "../components/PhoneConsultationForm";
-import { OnlineAnalysisForm } from "../components/OnlineAnalysisForm";
-import { AdminPanel } from "../components/AdminPanel";
-import { Button } from "../components/ui/button";
+import { PhoneConsultationForm } from "./components/PhoneConsultationForm";
+import { OnlineAnalysisForm } from "./components/OnlineAnalysisForm";
+import { AdminPanel } from "./components/AdminPanel";
+import { Button } from "./components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "../components/ui/dialog";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+} from "./components/ui/dialog";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
 import {
   Phone,
   BarChart3,
@@ -24,7 +23,6 @@ import {
   Building2,
   Home,
 } from "lucide-react";
-// 이미지 경로도 이미 '../'로 수정된 상태여야 합니다.
 import consultantImage from "../assets/a6f94ab0ce1420152da6a007d5f5c299abc96741.png";
 import insuranceComparisonImage from "../assets/103b05b4123991615d1e49ebbf7bfdcf94d0f112.png";
 
