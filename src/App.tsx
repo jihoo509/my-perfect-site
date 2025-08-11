@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+// 컴포넌트 경로 수정: App.tsx와 components 폴더는 src 폴더 안에서 같은 위치에 있으므로 './'가 맞습니다.
 import { PhoneConsultationForm } from "./components/PhoneConsultationForm";
 import { OnlineAnalysisForm } from "./components/OnlineAnalysisForm";
 import { AdminPanel } from "./components/AdminPanel";
@@ -23,8 +24,9 @@ import {
   Building2,
   Home,
 } from "lucide-react";
-import consultantImage from "../assets/a6f94ab0ce1420152da6a007d5f5c299abc96741.png";
-import insuranceComparisonImage from "../assets/103b05b4123991615d1e49ebbf7bfdcf94d0f112.png";
+// 이미지 경로 수정: App.tsx(src 폴더 안)에서 assets(src 폴더 안)를 바라보므로 './'가 맞습니다.
+import consultantImage from "./assets/a6f94ab0ce1420152da6a007d5f5c299abc96741.png";
+import insuranceComparisonImage from "./assets/103b05b4123991615d1e49ebbf7bfdcf94d0f112.png";
 
 export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
