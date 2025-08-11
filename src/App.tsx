@@ -245,14 +245,7 @@ export default function App() {
 
       {/* 기존 패턴들 */}
       <div className="absolute inset-0 opacity-8">
-        {/* 점 패턴 */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)`,
-            backgroundSize: "20px 20px",
-          }}
-        />
+
 
         {/* 대각선 그리드 */}
         <div
