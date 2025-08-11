@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background-color: #1e40af; /* Fallback color */
+  background-image: linear-gradient(to bottom right, #1e3a8a, #1e40af, #1d4ed8);
+  padding: 1rem;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* 배경 효과를 위한 가상 요소 */
+body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.15;
+  background-image:
+    radial-gradient(ellipse 800px 600px at 50% 40%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse 600px 400px at 30% 60%, rgba(147, 197, 253, 0.2) 0%, transparent 60%);
+}
+
+/* 메인 컨텐츠가 배경 효과 위에 오도록 z-index 설정 */
+#root {
+  position: relative;
+  z-index: 1;
+}
