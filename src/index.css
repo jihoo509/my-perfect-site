@@ -2,30 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  min-height: 100vh;
-  position: relative;
-  overflow: hidden;
-  background-color: #1e40af; /* Fallback color */
-  background-image: linear-gradient(to bottom right, #1e3a8a, #1e40af, #1d4ed8);
-  padding: 1rem;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+/* === Figma 스타일로 정리: 도트/프레임 제거 + 톤/간격 보정 === */
+
+/* 1) 전체 배경: 도트/프레임 제거 */
+html, body {
+  background: radial-gradient(1200px 800px at 50% -10%, #1E3A8A 0%, #0F1E46 45%, #09132A 100%) !important;
+  color: #E6F0FF;
 }
 
-/* 배경 효과를 위한 가상 요소 */
-body::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.15;
-  background-image:
-    radial-gradient(ellipse 800px 600px at 50% 40%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
-    radial-gradient(ellipse 600px 400px at 30% 60%, rgba(147, 197, 253, 0.2) 0%, transparent 60%);
+/* 도트/프레임을 pseudo-element로 올려뒀을 가능성 높음 → 강제 제거 */
+body::before,
+body::after {
+  content: none !important;
+  display: none !important;
 }
 
-/* 메인 컨텐츠가 배경 효과 위에 오도록 z-index 설정 */
-#root {
-  position: relative;
-  z-index: 1;
+/* 혹시 별도 엘리먼트/유틸 클래스로 도트를 깔았다면 이것도 무력화 */
+[class*="dot"],
+[class*="dots"],
+[class*="grid"],
+[class*="pattern"] {
+  background: none !important;
+  background-image: none !important;
+  border: none !important;
+}
+
+/* 2) 섹션 리듬(여백) - Figma처럼 조금 여유 있게 */
+:root{
+  --container: 1200px;
+  --radius-card: 22px;
+  --shadow-card: 0 20px 60px rgba(0,0,0,.35);
+  --brand-500: #3B6EF6;
+}
+.section { padding: 80px 0; }
+.container { max-width: var(--container); margin: 0 auto; padding: 0 20px; }
+
+/* 3) 히어로 타이틀/서브타이틀(그라디언트 텍스트 + 살짝 글로우) */
+.hero-title{
+  font-weight: 900;
+  font-size: 44px; line-height: 1.15; letter-spacing: .2px;
+  background: linear-gradient(180deg, #FFB648, #FF7A3D);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 2px 18px rgba(255,152,64,.25);
+}
+.hero-sub{
+  margin-top: 8px; font-size: 22px; line-height: 1.35; color: rgba(255,255,255,.9);
+}
+
+/* 4) 신청 폼 카드(둥글고 그림자 강하게) */
+.form-card{
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  padding: 26px 22px;
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(4px);
+}
+/* 입력창 */
+.form-card input, .form-card select{
+  width: 100%; height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(5,12,30,.6);
+  color: #EAF2FF; padding: 0 14px; outline: none;
+}
+.form-card input::placeholder{ color: rgba(230,240,255,.55); }
+
+/* 버튼(골드 계열) */
+.button-primary{
+  display:inline-flex; align-items:center; justify-content:center;
+  height: 46px; width: 100%;
+  border-radius: 14px; font-weight: 700;
+  background: linear-gradient(180deg, #DAA86F 0%, #B87A36 100%);
+  color: #1A1206;
+  box-shadow: 0 10px 28px rgba(186,133,60,.45);
+  transition: transform .06s ease, filter .2s ease;
+}
+.button-primary:hover{ filter: brightness(1.05); }
+.button-primary:active{ transform: translateY(1px); }
+
+/* 카드 2개 그리드 */
+.cards-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+/* 반응형 */
+@media (max-width: 1024px){
+  :root{ --container: 960px; }
+  .cards-row{ grid-template-columns: 1fr; gap: 24px; }
+  .hero-title{ font-size: 36px; }
+}
+@media (max-width: 768px){
+  :root{ --container: 680px; }
+  .section{ padding: 56px 0; }
+  .hero-title{ font-size: 30px; }
 }
