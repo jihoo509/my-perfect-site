@@ -136,3 +136,89 @@ body {
   box-shadow: 0 0 0 1000px #ffffff inset !important;
   caret-color: #0f172a;
 }
+/* === Figma 맞춤 미세조정 === */
+
+/* 1) 히어로 타이틀 크기/간격 */
+.hero-title{
+  font-size: 52px;           /* 데스크톱에서 좀 더 큼 */
+  line-height: 1.1;
+  letter-spacing: .1px;
+}
+.hero-sub{
+  margin-top: 6px;
+  font-size: 20px;
+  color: rgba(255,255,255,.92);
+}
+
+/* 2) 카드 톤/그림자 살짝 부드럽게 */
+.form-card{
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow:
+    0 30px 60px rgba(9,19,42,.35),
+    0 6px 16px rgba(9,19,42,.16);
+  padding: 24px 22px;
+}
+
+/* 3) 인풋(흰색, 포커스 골드) */
+.form-card input,
+.form-card select,
+.form-card textarea{
+  height: 48px;
+  background: #fff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15,23,42,.14) !important;
+  border-radius: 12px;
+  font-size: 16px;
+}
+.form-card input::placeholder,
+.form-card textarea::placeholder{ color:#6b7280 !important; }
+
+.form-card input:focus,
+.form-card select:focus,
+.form-card textarea:focus{
+  outline: none !important;
+  border-color: #C38A47 !important;
+  box-shadow: 0 0 0 3px rgba(195,138,71,.25) !important;
+}
+
+/* 4) 버튼 톤을 피그마에 더 가깝게(조금 밝게) */
+.button-primary{
+  border-radius: 14px;
+  background: linear-gradient(180deg, #E0B074 0%, #C38A47 100%);
+  box-shadow: 0 10px 28px rgba(195,138,71,.42);
+}
+
+/* 5) 섹션 제목(h2) 톤/크기 통일용 */
+.panel-heading{
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: #DBE8FF !important;
+  letter-spacing: .2px;
+}
+
+/* 6) 가운데 세로 구분선 더 미세하게 */
+.center-divider{
+  width: 1px !important;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.35) 50%, transparent) !important;
+}
+
+/* 7) 하단 예시 카드 톤 */
+.example-card{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 26px !important;
+  box-shadow:
+    0 24px 54px rgba(9,19,42,.32),
+    0 5px 14px rgba(9,19,42,.14);
+}
+
+/* 반응형 살짝 보정 */
+@media (max-width: 1024px){
+  .hero-title{ font-size: 44px; }
+}
+@media (max-width: 768px){
+  .hero-title{ font-size: 34px; }
+  .panel-heading{ font-size: 20px !important; }
+}

@@ -12,13 +12,7 @@ import {
 } from "./components/ui/dialog";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
-import {
-  Phone,
-  BarChart3,
-  ArrowDown,
-  Zap,
-  Smartphone,
-} from "lucide-react";
+import { Phone, BarChart3, ArrowDown, Zap, Smartphone } from "lucide-react";
 import consultantImage from "./assets/a6f94ab0ce1420152da6a007d5f5c299abc96741.png";
 import insuranceComparisonImage from "./assets/103b05b4123991615d1e49ebbf7bfdcf94d0f112.png";
 
@@ -127,7 +121,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#1d4ed8] p-4">
-      {/* 배경 효과 (도트는 CSS 오버라이드에서 제거됨) */}
+      {/* 배경 효과 */}
       <div className="absolute inset-0">
         <div
           className="absolute inset-0"
@@ -251,14 +245,11 @@ export default function App() {
       </Dialog>
 
       {/* 숨겨진 관리자 접근 영역 */}
-      <div
-        className="absolute top-4 left-4 z-20 w-16 h-16 cursor-default opacity-0"
-        onClick={handleHiddenClick}
-      ></div>
+      <div className="absolute top-4 left-4 z-20 w-16 h-16 cursor-default opacity-0" onClick={handleHiddenClick} />
 
       {/* 메인 컨텐츠 */}
       <div className="relative z-10 w-full max-w-7xl mx-auto pt-6 lg:pt-8 container section">
-        {/* 상단 제목 (Figma 스타일 클래스 적용) */}
+        {/* 상단 제목 */}
         <div className="text-center mb-8 lg:mb-12">
           <h1 className="hero-title">치아보험 전문가</h1>
           <p className="hero-sub">1:1 무료 매칭 신청</p>
@@ -271,7 +262,7 @@ export default function App() {
             <div className="flex-1 flex flex-col items-center space-y-6">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-3xl leading-relaxed flex items-center justify-center gap-3"
+                  className="text-white text-3xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full shadow-lg">
@@ -281,14 +272,13 @@ export default function App() {
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">전문가와 직접 통화하며 상담받고 싶은 분</p>
               </div>
-              {/* 폼 카드 래핑 */}
               <div className="form-card w-full max-w-md">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
             </div>
 
             {/* 중앙 구분자 */}
-            <div className="w-px h-96 bg-white/20 relative self-center">
+            <div className="w-px h-96 bg-white/20 relative self-center center-divider">
               <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/10 rounded-full p-3"
                 style={{ boxShadow: "0 0 30px rgba(255,255,255,0.2), inset 0 0 20px rgba(255,255,255,0.1)" }}
@@ -303,7 +293,7 @@ export default function App() {
             <div className="flex-1 flex flex-col items-center space-y-6">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-3xl leading-relaxed flex items-center justify-center gap-3"
+                  className="text-white text-3xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-12 h-12 bg-emerald-500 rounded-full shadow-lg">
@@ -313,7 +303,6 @@ export default function App() {
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">온라인으로 빠르고 간편하게 비교분석 받고 싶은 분</p>
               </div>
-              {/* 폼 카드 래핑 */}
               <div className="form-card w-full max-w-md">
                 <OnlineAnalysisForm title="아래 이미지 파일 참조." />
               </div>
@@ -327,7 +316,7 @@ export default function App() {
                 <ArrowDown size={24} className="text-white" />
               </div>
             </div>
-            <div className="w-px h-16 bg-transparent"></div>
+            <div className="w-px h-16 bg-transparent" />
             <div className="flex-1 flex justify-center">
               <div className="flex items-center justify-center w-12 h-12 bg-orange-500 rounded-full shadow-lg animate-bounce">
                 <ArrowDown size={24} className="text-white" />
@@ -346,7 +335,7 @@ export default function App() {
                 </span>
               </h3>
               <div
-                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20 min-h-[400px] flex items-center justify-center overflow-hidden"
+                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20 min-h-[400px] flex items-center justify-center overflow-hidden example-card"
                 style={{
                   boxShadow: `
                     0 25px 50px -12px rgba(0, 0, 0, 0.4),
@@ -369,7 +358,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="w-px h-96 bg-white/20 relative self-center">
+            <div className="w-px h-96 bg-white/20 relative self-center center-divider">
               <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/10 rounded-full p-3"
                 style={{ boxShadow: "0 0 30px rgba(255,255,255,0.2), inset 0 0 20px rgba(255,255,255,0.1)" }}
@@ -390,7 +379,7 @@ export default function App() {
                 </span>
               </h3>
               <div
-                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20 min-h-[400px] flex items-center justify-center overflow-hidden"
+                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20 min-h-[400px] flex items-center justify-center overflow-hidden example-card"
                 style={{
                   boxShadow: `
                     0 25px 50px -12px rgba(0, 0, 0, 0.4),
@@ -460,7 +449,7 @@ export default function App() {
             <div className="flex flex-col items-center space-y-4">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-2xl leading-relaxed flex items-center justify-center gap-3"
+                  className="text-white text-2xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full shadow-lg">
@@ -471,7 +460,6 @@ export default function App() {
                 <p className="text-white/80 text-lg leading-relaxed">전문가와 직접 통화하며 상담받고 싶은 분</p>
               </div>
 
-              {/* 모바일 폼 카드 */}
               <div className="form-card w-full max-w-md">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
@@ -481,7 +469,7 @@ export default function App() {
               </div>
 
               <div
-                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-4 border border-white/20 min-h-[300px] flex items-center justify-center overflow-hidden"
+                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-4 border border-white/20 min-h-[300px] flex items-center justify-center overflow-hidden example-card"
                 style={{
                   boxShadow: `
                     0 25px 50px -12px rgba(0, 0, 0, 0.4),
@@ -509,7 +497,7 @@ export default function App() {
             <div className="flex flex-col items-center space-y-4">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-2xl leading-relaxed flex items-center justify-center gap-3"
+                  className="text-white text-2xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-10 h-10 bg-emerald-500 rounded-full shadow-lg">
@@ -520,7 +508,6 @@ export default function App() {
                 <p className="text-white/80 text-lg leading-relaxed">온라인으로 빠르고 간편하게 비교분석 받고 싶은 분</p>
               </div>
 
-              {/* 모바일 폼 카드 */}
               <div className="form-card w-full max-w-md">
                 <OnlineAnalysisForm title="아래 이미지 파일 참조." />
               </div>
@@ -530,7 +517,7 @@ export default function App() {
               </div>
 
               <div
-                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-4 border border-white/20 min-h-[300px] flex items-center justify-center overflow-hidden"
+                className="w-full max-w-md bg-white/10 backdrop-blur-sm rounded-3xl p-4 border border-white/20 min-h-[300px] flex items-center justify-center overflow-hidden example-card"
                 style={{
                   boxShadow: `
                     0 25px 50px -12px rgba(0, 0, 0, 0.4),
