@@ -243,58 +243,6 @@ export default function App() {
         />
       </div>
 
-      {/* 기존 패턴들 */}
-      <div className="absolute inset-0 opacity-8">
-
-
-        {/* 대각선 그리드 */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(45deg, rgba(255,255,255,0.08) 1px, transparent 1px),
-              linear-gradient(-45deg, rgba(255,255,255,0.08) 1px, transparent 1px)
-            `,
-            backgroundSize: "60px 60px",
-          }}
-        />
-
-        {/* 보험 관련 아이콘들 */}
-        <div className="absolute top-1/4 left-1/8 transform -translate-x-1/2 -translate-y-1/2 opacity-40">
-          <div className="flex items-center justify-center w-16 h-16 bg-purple-500/30 backdrop-blur-sm rounded-full border border-purple-400/20">
-            <Shield size={32} className="text-purple-200" />
-          </div>
-        </div>
-
-        <div className="absolute top-3/4 left-1/4 transform -translate-x-1/2 translate-y-1/2 opacity-40">
-          <div className="flex items-center justify-center w-14 h-14 bg-amber-500/30 backdrop-blur-sm rounded-full border border-amber-400/20">
-            <Briefcase size={28} className="text-amber-200" />
-          </div>
-        </div>
-
-        <div className="absolute top-1/2 right-1/8 transform translate-x-1/2 -translate-y-1/2 opacity-40">
-          <div className="flex items-center justify-center w-12 h-12 bg-rose-500/30 backdrop-blur-sm rounded-full border border-rose-400/20">
-            <Building2 size={24} className="text-rose-200" />
-          </div>
-        </div>
-
-        <div className="absolute bottom-1/4 right-1/4 transform translate-x-1/2 translate-y-1/2 opacity-40">
-          <div className="flex items-center justify-center w-14 h-14 bg-teal-500/30 backdrop-blur-sm rounded-full border border-teal-400/20">
-            <Home size={28} className="text-teal-200" />
-          </div>
-        </div>
-
-        {/* 중앙 구분선 */}
-        <div
-          className="absolute top-0 left-1/2 w-px h-full transform -translate-x-1/2"
-          style={{
-            background:
-              "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.2) 20%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.2) 80%, transparent 100%)",
-            boxShadow: "0 0 20px rgba(255,255,255,0.1)",
-          }}
-        ></div>
-      </div>
-
       {/* 관리자 패널 접근 버튼 */}
       {adminModeEnabled && (
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
