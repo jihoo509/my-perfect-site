@@ -33,7 +33,7 @@ export const saveConsultationToStorage = (data: any) => {
 };
 
 // 저장된 모든 데이터를 불러오는 함수
-export const loadConsultationsFromStorage = () => {
+export const getConsultationsFromStorage = () => {
   try {
     return JSON.parse(localStorage.getItem('consultationData') || '[]');
   } catch (error) {
