@@ -272,7 +272,8 @@ export default function App() {
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">전문가와 직접 통화하며 상담받고 싶은 분</p>
               </div>
-              <div className="form-card w-full max-w-md">
+              {/* 한 겹 래퍼 + 너비 축소 */}
+              <div className="form-panel w-full max-w-[440px]">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
             </div>
@@ -303,7 +304,8 @@ export default function App() {
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">온라인으로 빠르고 간편하게 비교분석 받고 싶은 분</p>
               </div>
-              <div className="form-card w-full max-w-md">
+              {/* 한 겹 래퍼 + 너비 축소 */}
+              <div className="form-panel w-full max-w-[440px]">
                 <OnlineAnalysisForm title="아래 이미지 파일 참조." />
               </div>
             </div>
@@ -460,7 +462,8 @@ export default function App() {
                 <p className="text-white/80 text-lg leading-relaxed">전문가와 직접 통화하며 상담받고 싶은 분</p>
               </div>
 
-              <div className="form-card w-full max-w-md">
+              {/* 모바일 한 겹 래퍼 + 너비 축소 */}
+              <div className="form-panel w-full max-w-[420px]">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
 
@@ -508,7 +511,8 @@ export default function App() {
                 <p className="text-white/80 text-lg leading-relaxed">온라인으로 빠르고 간편하게 비교분석 받고 싶은 분</p>
               </div>
 
-              <div className="form-card w-full max-w-md">
+              {/* 모바일 한 겹 래퍼 + 너비 축소 */}
+              <div className="form-panel w-full max-w-[420px]">
                 <OnlineAnalysisForm title="아래 이미지 파일 참조." />
               </div>
 
