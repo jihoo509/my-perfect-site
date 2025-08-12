@@ -231,19 +231,20 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
         }}
       >
         {/* 헤더 텍스트 */}
-        <div className="text-center space-y-1 mb-4">
-          <h1 className="text-white text-2xl leading-relaxed">
-            한 눈에 비교 분석할 수 있는
-          </h1>
-          <h2 className="text-[#fbbf24] text-2xl leading-relaxed">
-            이미지 파일을 보내드립니다.
-          </h2>
-          {title && (
-            <h3 className="text-white/80 text-base mt-2">
-              {title}
-            </h3>
-          )}
-        </div>
+<div className="text-center space-y-1.5 mb-5">
+  <p className="text-white text-[22px] md:text-2xl font-extrabold tracking-tight drop-shadow-[0_1px_10px_rgba(0,0,0,.30)]">
+    한 눈에 비교 분석할 수 있는
+  </p>
+  <p className="text-[22px] md:text-2xl font-black bg-gradient-to-b from-[#FFB648] to-[#FF7A3D] bg-clip-text text-transparent drop-shadow-[0_1px_12px_rgba(255,152,64,.28)]">
+    이미지 파일을 보내드립니다.
+  </p>
+  {title && (
+    <p className="mt-2 text-white/85 text-[13px] md:text-sm">
+      {title}
+    </p>
+  )}
+</div>
+
 
         {/* 폼 */}
         <div className="space-y-3">
