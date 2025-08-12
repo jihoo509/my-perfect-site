@@ -34,15 +34,13 @@ body::after {
 /* 3) 히어로 타이틀/서브타이틀 (Figma 느낌) */
 .hero-title{
   font-weight: 900;
-  font-size: 44px;
-  line-height: 1.15;
-  letter-spacing: .2px;
+  font-size: 44px; line-height: 1.15; letter-spacing: .2px;
   background: linear-gradient(180deg, #FFB648, #FF7A3D);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 2px 18px rgba(255,152,64,.25);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* ↓ 살짝만 남긴 버전 */
+  text-shadow: 0 1px 8px rgba(255,152,64,.18);
 }
+
 .hero-sub{
   margin-top: 8px;
   font-size: 22px;
