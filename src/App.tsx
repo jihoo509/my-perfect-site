@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PhoneConsultationForm } from "./components/PhoneConsultationForm";
 import { OnlineAnalysisForm } from "./components/OnlineAnalysisForm";
@@ -252,7 +253,8 @@ export default function App() {
         {/* 상단 제목 */}
         <div className="text-center mb-8 lg:mb-12">
           <h1 className="hero-title">치아보험 전문가</h1>
-          <p className="hero-sub">1:1 무료 매칭 신청</p>
+          {/* 폰트 굵게 요청 */}
+          <p className="hero-sub font-bold">1:1 무료 매칭 신청</p>
         </div>
 
         {/* 데스크톱 레이아웃 */}
@@ -262,7 +264,7 @@ export default function App() {
             <div className="flex-1 flex flex-col items-center space-y-6">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-3xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
+                  className="text-white text-4xl font-bold leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full shadow-lg">
@@ -270,9 +272,12 @@ export default function App() {
                   </div>
                   전화 상담
                 </h2>
-                <p className="text-white/80 text-lg leading-relaxed">전문가와 직접 통화하며 상담받고 싶은 분</p>
+                {/* 설명 텍스트 굵게 */}
+                <p className="text-white/85 text-lg leading-relaxed font-semibold">
+                  전문가와 직접 통화하며 상담받고 싶은 분
+                </p>
               </div>
-              {/* 한 겹 래퍼 + 너비 축소 */}
+              {/* 얇은 겉패널 제거 버전: form-panel 사용 */}
               <div className="form-panel w-full max-w-[440px]">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
@@ -294,7 +299,7 @@ export default function App() {
             <div className="flex-1 flex flex-col items-center space-y-6">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-3xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
+                  className="text-white text-4xl font-bold leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-12 h-12 bg-emerald-500 rounded-full shadow-lg">
@@ -302,9 +307,10 @@ export default function App() {
                   </div>
                   온라인 분석
                 </h2>
-                <p className="text-white/80 text-lg leading-relaxed">온라인으로 빠르고 간편하게 비교분석 받고 싶은 분</p>
+                <p className="text-white/85 text-lg leading-relaxed font-semibold">
+                  온라인으로 빠르고 간편하게 비교분석 받고 싶은 분
+                </p>
               </div>
-              {/* 한 겹 래퍼 + 너비 축소 */}
               <div className="form-panel w-full max-w-[440px]">
                 <OnlineAnalysisForm title="아래 이미지 파일 참조." />
               </div>
@@ -451,7 +457,7 @@ export default function App() {
             <div className="flex flex-col items-center space-y-4">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-2xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
+                  className="text-white text-3xl font-bold leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full shadow-lg">
@@ -459,10 +465,11 @@ export default function App() {
                   </div>
                   전화 상담
                 </h2>
-                <p className="text-white/80 text-lg leading-relaxed">전문가와 직접 통화하며 상담받고 싶은 분</p>
+                <p className="text-white/85 text-lg leading-relaxed font-semibold">
+                  전문가와 직접 통화하며 상담받고 싶은 분
+                </p>
               </div>
 
-              {/* 모바일 한 겹 래퍼 + 너비 축소 */}
               <div className="form-panel w-full max-w-[420px]">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
@@ -500,7 +507,7 @@ export default function App() {
             <div className="flex flex-col items-center space-y-4">
               <div className="text-center space-y-2">
                 <h2
-                  className="text-white text-2xl leading-relaxed flex items-center justify-center gap-3 panel-heading"
+                  className="text-white text-3xl font-bold leading-relaxed flex items-center justify-center gap-3 panel-heading"
                   style={{ textShadow: "0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.1)" }}
                 >
                   <div className="flex items-center justify-center w-10 h-10 bg-emerald-500 rounded-full shadow-lg">
@@ -508,10 +515,11 @@ export default function App() {
                   </div>
                   온라인 분석
                 </h2>
-                <p className="text-white/80 text-lg leading-relaxed">온라인으로 빠르고 간편하게 비교분석 받고 싶은 분</p>
+                <p className="text-white/85 text-lg leading-relaxed font-semibold">
+                  온라인으로 빠르고 간편하게 비교분석 받고 싶은 분
+                </p>
               </div>
 
-              {/* 모바일 한 겹 래퍼 + 너비 축소 */}
               <div className="form-panel w-full max-w-[420px]">
                 <OnlineAnalysisForm title="아래 이미지 파일 참조." />
               </div>
