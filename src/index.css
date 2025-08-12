@@ -222,3 +222,26 @@ body {
   .hero-title{ font-size: 34px; }
   .panel-heading{ font-size: 20px !important; }
 }
+/* Modal panel look (개인정보 팝업 공통) */
+.modal-panel {
+  /* 패널 */
+  background: rgba(15, 30, 70, 0.95);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  box-shadow:
+    0 30px 60px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
+  backdrop-filter: blur(8px);
+}
+
+/* 스크롤 많은 경우 보기 좋게 */
+.modal-scroll {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+/* 제목/설명 살짝 강조(선택) */
+.modal-title { font-weight: 800; font-size: 20px; }
+.modal-desc  { color: rgba(255,255,255,.7); }
+
