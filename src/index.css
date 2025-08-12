@@ -15,10 +15,7 @@ body::after {
   display: none !important;
 }
 /* 이름에 dot/grid/pattern 이 들어간 배경 유틸/엘리먼트 무력화 */
-[class*="dot"],
-[class*="dots"],
-[class*="grid"],
-[class*="pattern"] {
+.bg-dots, .dot-grid, .dots-pattern, [data-bg="dots"] {
   background: none !important;
   background-image: none !important;
   border: none !important;
@@ -105,9 +102,7 @@ body::after {
   .section{ padding: 56px 0; }
   .hero-title{ font-size: 30px; }
 }
-body {
-  outline: 8px solid red !important;
-}
+
 /* === Figma 인풋 톤(밝은 흰색)으로 덮어쓰기 === */
 .form-card input,
 .form-card select,
