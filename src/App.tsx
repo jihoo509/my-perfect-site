@@ -274,7 +274,7 @@ export default function App() {
                 </h2>
                 {/* 설명 텍스트 굵게 */}
                 <p className="text-white/85 text-lg leading-relaxed font-semibold">
-                  전문가와 직접 통화하며 상담받고 싶은 분
+                  전문가와 직접 통화하며 상담 진행
                 </p>
               </div>
               {/* 얇은 겉패널 제거 버전: form-panel 사용 */}
@@ -308,7 +308,7 @@ export default function App() {
                   온라인 분석
                 </h2>
                 <p className="text-white/85 text-lg leading-relaxed font-semibold">
-                  온라인으로 빠르고 간편하게 비교분석 받고 싶은 분
+                  온라인으로 빠르고 간편하게 비교분석
                 </p>
               </div>
               <div className="form-panel w-full max-w-[440px]">
@@ -466,7 +466,7 @@ export default function App() {
                   전화 상담
                 </h2>
                 <p className="text-white/85 text-lg leading-relaxed font-semibold">
-                  전문가와 직접 통화하며 상담받고 싶은 분
+                  전문가와 직접 통화하며 상담 진행
                 </p>
               </div>
 
@@ -516,7 +516,7 @@ export default function App() {
                   온라인 분석
                 </h2>
                 <p className="text-white/85 text-lg leading-relaxed font-semibold">
-                  온라인으로 빠르고 간편하게 비교분석 받고 싶은 분
+                  온라인으로 빠르고 간편하게 비교분석
                 </p>
               </div>
 
