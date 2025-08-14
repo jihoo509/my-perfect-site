@@ -1,85 +1,97 @@
-export const runtime = 'nodejs'; // 또는 'edge'
+// api/admin/export.ts
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-type Item = {
-  id: number;
-  url: string;
-  title: string;
-  body?: string;
-  labels?: { name: string }[];
-  created_at: string;
-};
+const GH = (path: string) =>
+  `https://api.github.com/repos/${process.env.GH_REPO_FULLNAME}${path}`;
 
-function toCSV(items: Item[]) {
-  const rows = [
-    ['id', 'title', 'url', 'labels', 'created_at'],
-    ...items.map(i => [
-      String(i.id),
-      i.title?.replace(/"/g, '""') ?? '',
-      i.url,
-      (i.labels ?? []).map(l => l.name).join('|'),
-      i.created_at
-    ])
-  ];
-  return rows.map(r => r.map(f => `"${(f ?? '').toString().replace(/"/g, '""')}"`).join(',')).join('\r\n');
+function toCsv(rows: any[]): string {
+  if (!rows.length) return 'number,title,created_at,site,type,name,phone,birth\n';
+  const header = ['number','title','created_at','site','type','name','phone','birth'];
+  const esc = (v: any) => {
+    const s = (v ?? '').toString();
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const body = rows.map(r => header.map(k => esc(r[k])).join(',')).join('\n');
+  return header.join(',') + '\n' + body + '\n';
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const { searchParams } = new URL(req.url);
-    const token = searchParams.get('token') ?? '';
-    const site  = searchParams.get('site') ?? '';
-    const type  = searchParams.get('type') ?? '';
-    const from  = searchParams.get('from') ?? '';
-    const to    = searchParams.get('to') ?? '';
-    const format = (searchParams.get('format') ?? 'csv').toLowerCase();
-
-    const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? '';
-    const GH_TOKEN = process.env.GH_TOKEN ?? '';
-    const REPO = process.env.GH_REPO_FULLNAME ?? ''; // e.g. "jihoo509/lead-inbox"
-
-    if (!token || token !== ADMIN_TOKEN) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    if (!GH_TOKEN || !REPO) {
-      return new Response('Missing GitHub env', { status: 500 });
+    if (!process.env.ADMIN_TOKEN || req.query.token !== process.env.ADMIN_TOKEN) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
-    // GitHub 이슈(lead) 조회
-    const q: string[] = [`repo:${REPO}`, 'is:issue'];
-    if (site) q.push(`label:site:${site}`);
-    if (type) q.push(`label:type:${type}`);
-    if (from) q.push(`created:>=${from}`);
-    if (to)   q.push(`created:<=${to}`);
+    const qSite = (req.query.site ?? '').toString().trim();   // e.g. 'teeth'
+    const qType = (req.query.type ?? '').toString().trim();   // 'online' | 'phone' | ''
+    const from = (req.query.from ?? '').toString().trim();    // YYYY-MM-DD
+    const to   = (req.query.to   ?? '').toString().trim();    // YYYY-MM-DD
+    const format = (req.query.format ?? 'csv').toString().toLowerCase(); // 'csv' | 'json'
 
-    const url = `https://api.github.com/search/issues?q=${encodeURIComponent(q.join(' '))}&per_page=100`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${GH_TOKEN}`, 'Accept': 'application/vnd.github+json' } });
-    if (!res.ok) {
-      const text = await res.text();
-      return new Response(`GitHub API error: ${res.status} ${text}`, { status: 500 });
+    const labels: string[] = [];
+    if (qSite) labels.push(`site:${qSite}`);
+    if (qType) labels.push(`type:${qType}`);
+
+    const url = GH(`/issues?state=all&per_page=100${labels.length ? `&labels=${encodeURIComponent(labels.join(','))}` : ''}`);
+
+    const r = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.GH_TOKEN}`,
+        'User-Agent': 'vercel-fn',
+        Accept: 'application/vnd.github+json',
+      },
+    });
+
+    if (!r.ok) {
+      const text = await r.text();
+      console.error('GitHub export error:', r.status, text);
+      return res.status(500).json({ ok: false, error: 'GitHub API error', status: r.status, detail: text });
     }
-    const data = await res.json() as { items: any[] };
 
-    const items: Item[] = (data.items ?? []).map(it => ({
-      id: it.number,
-      url: it.html_url,
-      title: it.title,
-      body: it.body,
-      labels: (it.labels ?? []).map((l: any) => ({ name: l.name })),
-      created_at: it.created_at
-    }));
+    const raw = await r.json();
+    let items = (Array.isArray(raw) ? raw : [])
+      .filter((it: any) => !it.pull_request)
+      .map((it: any) => {
+        let payload: any = {};
+        try { if (it.body) payload = JSON.parse(it.body); } catch {}
+        // 라벨 파싱
+        const labels = (it.labels || []).map((l: any) => l.name);
+        const siteLabel = labels.find((n: string) => n.startsWith('site:')) || '';
+        const typeLabel = labels.find((n: string) => n.startsWith('type:')) || '';
+        return {
+          number: it.number,
+          title: it.title,
+          created_at: it.created_at,
+          site: siteLabel.replace('site:', ''),
+          type: typeLabel.replace('type:', ''),
+          name: payload.name || '',
+          phone: payload.phone || '',
+          birth: payload.birth || payload.birthDate || '',
+          labels,
+          payload,
+        };
+      });
+
+    // 날짜 필터(옵션)
+    if (from) {
+      const fromTs = Date.parse(from);
+      items = items.filter(i => Date.parse(i.created_at) >= fromTs);
+    }
+    if (to) {
+      const toTs = Date.parse(to) + 24*60*60*1000 - 1; // inclusive
+      items = items.filter(i => Date.parse(i.created_at) <= toTs);
+    }
 
     if (format === 'json') {
-      return Response.json({ ok: true, count: items.length, items });
+      return res.status(200).json({ ok: true, count: items.length, items });
     }
 
-    const csv = toCSV(items);
-    return new Response(csv, {
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="export-${Date.now()}.csv"`
-      }
-    });
-  } catch (e: any) {
-    return new Response(`Export error: ${e?.message ?? e}`, { status: 500 });
+    // CSV (기본)
+    const csv = toCsv(items);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
+    return res.status(200).send(csv);
+  } catch (err: any) {
+    console.error('admin/export error:', err?.stack || err);
+    return res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
 }
