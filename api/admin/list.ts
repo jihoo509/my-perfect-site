@@ -1,34 +1,59 @@
-// api/admin/list.ts  — dry-run only
+// api/admin/list.ts — dry-run (깃허브 호출 없이 URL/토큰만 검증)
 export const config = { runtime: 'nodejs' };
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN!;
 
-// Vercel Edge/Node에서 절대경로 보장용
-function urlWithBase(req: Request) {
-  const base = `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host') || 'localhost'}`;
-  return new URL(req.url, base);
+// Node(plain object headers) + Web(Request.headers.get) 모두 지원
+function getHeader(req: any, key: string): string {
+  const h = req?.headers;
+  if (!h) return '';
+  if (typeof h.get === 'function') {
+    return h.get(key) || '';
+  }
+  const k = key.toLowerCase();
+  return h[k] || h[key] || '';
 }
 
-export default function handler(req: Request) {
-  const url = urlWithBase(req);
+// 절대 URL 생성을 항상 보장
+function urlFromReq(req: any): URL {
+  const raw = (req?.url as string) || '/';
+  if (/^https?:\/\//i.test(raw)) return new URL(raw);
+
+  const proto = getHeader(req, 'x-forwarded-proto') || 'https';
+  const host  = getHeader(req, 'host') || 'localhost';
+  return new URL(raw, `${proto}://${host}`);
+}
+
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    },
+  });
+}
+
+export default function handler(req: any) {
+  let url: URL;
+  try {
+    url = urlFromReq(req);
+  } catch {
+    return json({ ok: false, error: 'Bad URL' }, 400);
+  }
+
   const token = url.searchParams.get('token') || '';
 
   if (!token || token !== ADMIN_TOKEN) {
-    return new Response(JSON.stringify({ ok:false, error:'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type':'application/json; charset=utf-8', 'cache-control':'no-store' },
-    });
+    return json({ ok: false, error: 'Unauthorized' }, 401);
   }
 
-  // 깃허브 호출은 전혀 X — URL/토큰만 확인
-  return new Response(JSON.stringify({
+  // 깃허브 호출 없이 즉시 성공 반환 (드라이런)
+  return json({
     ok: true,
     mode: 'dry',
     path: url.pathname,
     q: Object.fromEntries(url.searchParams.entries()),
     ts: new Date().toISOString(),
-  }), {
-    status: 200,
-    headers: { 'content-type':'application/json; charset=utf-8', 'cache-control':'no-store' },
   });
 }
