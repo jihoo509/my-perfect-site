@@ -1,81 +1,72 @@
 // api/admin/list.ts
 export const config = { runtime: 'nodejs' };
 
-const GH_TOKEN = process.env.GH_TOKEN ?? '';
-const GH_REPO_FULLNAME = process.env.GH_REPO_FULLNAME ?? '';
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? '';
+const GH_TOKEN = process.env.GH_TOKEN!;
+const GH_REPO_FULLNAME = process.env.GH_REPO_FULLNAME!;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN!;
 
-function buildURL(req: Request) {
-  return new URL(req.url, `https://${process.env.VERCEL_URL || 'localhost'}`);
-}
-
-function ensureAdmin(req: Request) {
-  const url = buildURL(req);
-  const token = url.searchParams.get('token');
-  return token && token === ADMIN_TOKEN;
-}
-
-async function ghJson(url: string, timeoutMs = 12000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${GH_TOKEN}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'lead-inbox-vercel',
-      },
-      cache: 'no-store',
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      return { ok: false, status: res.status, text };
-    }
-    return { ok: true, json: JSON.parse(text) };
-  } catch (e: any) {
-    return { ok: false, status: 599, text: e?.name === 'AbortError' ? 'timeout' : String(e) };
-  } finally {
-    clearTimeout(t);
-  }
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8' },
+  });
 }
 
 export default async function handler(req: Request) {
-  if (!ensureAdmin(req)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
+  try {
+    const { searchParams } = new URL(req.url);
+    const token = searchParams.get('token');
+    if (!token || token !== ADMIN_TOKEN) {
+      return json({ ok: false, error: 'Unauthorized' }, 401);
+    }
+
+    if (!GH_TOKEN || !GH_REPO_FULLNAME) {
+      return json({ ok: false, error: 'Missing env' }, 500);
+    }
+
+    const url =
+      `https://api.github.com/repos/${GH_REPO_FULLNAME}` +
+      `/issues?state=open&per_page=30&sort=created&direction=desc`;
+
+    // ⬇️ 핵심: 타임아웃 + User-Agent
+    const gh = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${GH_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'vercel-lead-inbox/1.0',
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
     });
+
+    const bodyText = await gh.text(); // 에러 메시지 확인용
+    if (!gh.ok) {
+      // GitHub가 바로 주는 원문을 보여줘서 원인 파악
+      return json(
+        {
+          ok: false,
+          step: 'github',
+          status: gh.status,
+          body: bodyText.slice(0, 500),
+        },
+        gh.status,
+      );
+    }
+
+    const issues = JSON.parse(bodyText);
+    const items = (issues as any[]).map((i) => ({
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      created_at: i.created_at,
+    }));
+
+    return json({ ok: true, count: items.length, items });
+  } catch (err: any) {
+    // 네트워크 타임아웃/차단이면 여기로 들어옴
+    return json(
+      { ok: false, error: err?.name || 'Error', message: String(err?.message || err) },
+      500,
+    );
   }
-
-  if (!GH_TOKEN || !GH_REPO_FULLNAME) {
-    return new Response(JSON.stringify({ ok: false, error: 'Missing env' }), {
-      status: 500,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
-    });
-  }
-
-  const api =
-    `https://api.github.com/repos/${GH_REPO_FULLNAME}/issues` +
-    `?state=open&per_page=50&sort=created&direction=desc`;
-
-  const r = await ghJson(api);
-  if (!r.ok) {
-    return new Response(JSON.stringify({ ok: false, error: 'GitHub fetch failed', detail: r.text, status: r.status }), {
-      status: 502,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
-    });
-  }
-
-  const list = (r.json as any[]).map((it) => ({
-    id: it.id,
-    number: it.number,
-    title: it.title,
-    created_at: it.created_at,
-    labels: Array.isArray(it.labels) ? it.labels.map((l: any) => l.name) : [],
-  }));
-
-  return new Response(JSON.stringify({ ok: true, count: list.length, items: list }), {
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-  });
 }
