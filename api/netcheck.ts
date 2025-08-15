@@ -1,9 +1,9 @@
 // api/netcheck.ts
 export const config = { runtime: 'nodejs' };
 
-export default function handler() {
-  return new Response(JSON.stringify({ ok: true, path: '/api/netcheck' }), {
+export default async function handler(_req: Request) {
+  return new Response(JSON.stringify({ ok: true, who: 'netcheck' }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    headers: { 'content-type': 'application/json; charset=utf-8' },
   });
 }
