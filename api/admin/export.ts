@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const { GH_TOKEN, GH_REPO_FULLNAME, ADMIN_TOKEN } = process.env;
+const { GH_TOKEN, GH_REPO_FULLNAME, ADMIN_TOKEN, VITE_SITE_ID } = process.env;
 
 // --------- utils ----------
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000) {
@@ -19,9 +19,15 @@ function pickLabel(labels: any[] = [], prefix: string) {
   return hit ? String(hit.name).slice(prefix.length) : '';
 }
 
+/**
+ * 본문에서 리드 페이로드 추출:
+ * 1) ``` ... ``` 코드블록 안의 JSON을 우선 시도
+ * 2) 실패하면 "키: 값" 형태 라인들을 파싱해 name/phone/birth/type 추출
+ */
 function parsePayloadFromBody(body?: string) {
   if (!body) return {} as any;
-  // ```json ... ``` 사이에 있는 JSON 블록 추출
+
+  // 1) 코드블록(JSON) 우선
   const s = body.indexOf('```');
   const e = body.lastIndexOf('```');
   if (s >= 0 && e > s) {
@@ -34,7 +40,41 @@ function parsePayloadFromBody(body?: string) {
       } catch { /* ignore */ }
     }
   }
-  return {} as any;
+
+  // 2) "키: 값" 라인 파싱 (한국어 키워드 포함)
+  const out: any = {};
+  const lines = body.split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    // 한글 콜론/영문 콜론 모두 허용
+    const m = line.match(/^([^:：]+)\s*[:：]\s*(.+)$/);
+    if (!m) continue;
+
+    const key = m[1].trim();
+    const val = m[2].trim();
+
+    if (/이름|성명|name/i.test(key)) {
+      out.name = val;
+      continue;
+    }
+    if (/(전화|연락처|휴대폰|휴대전화|핸드폰|phone)/i.test(key)) {
+      out.phone = val.replace(/[^\d+]/g, '');
+      continue;
+    }
+    if (/(주민번호|생년월일|출생|birth|dob)/i.test(key)) {
+      const digits = val.replace(/\D/g, '');
+      // YYYYMMDD가 보이면 8자리, 아니면 YYMMDD(6자리)라도 채움
+      if (digits.length >= 8) out.birth = digits.slice(0, 8);
+      else if (digits.length >= 6) out.birth = digits.slice(0, 6);
+      continue;
+    }
+    if (/타입|유형|type/i.test(key) && !out.type) {
+      out.type = val;
+      continue;
+    }
+  }
+
+  return out;
 }
 
 function toCSV(rows: string[][]) {
@@ -84,9 +124,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4) 가공
     const items = issues.map(it => {
-      const site = pickLabel(it.labels, 'site:');
-      const type = pickLabel(it.labels, 'type:');
       const payload = parsePayloadFromBody(it.body);
+      const site = pickLabel(it.labels, 'site:') || (VITE_SITE_ID ?? '');
+      const type = pickLabel(it.labels, 'type:') || (payload.type ?? '');
 
       return {
         number: it.number,
