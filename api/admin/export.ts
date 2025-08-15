@@ -5,7 +5,7 @@ const GH_TOKEN = process.env.GH_TOKEN!;
 const GH_REPO_FULLNAME = process.env.GH_REPO_FULLNAME!;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN!;
 
-/** 절대 URL 생성 (프록시/미리보기에서도 안전) */
+/** 절대 URL 생성 */
 function getUrl(req: Request) {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000';
   const proto = req.headers.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
@@ -19,19 +19,19 @@ function ensureAdmin(req: Request) {
   return Boolean(token && token === ADMIN_TOKEN);
 }
 
-/** labels 배열에서 접두사로 값 추출 (예: 'site:teeth' -> 'teeth') */
+/** labels에서 접두사값 추출 */
 function pickLabel(labels: any[], prefix: string) {
   const hit = labels?.find((l: any) => typeof l.name === 'string' && l.name.startsWith(prefix));
   return hit ? String(hit.name).slice(prefix.length) : '';
 }
 
-/** ```json ... ``` 코드블록에서 payload 파싱 */
+/** 이슈 body의 ```json ... ``` 블록 파싱 */
 function parsePayloadFromBody(body?: string) {
   if (!body) return {};
   const start = body.indexOf('```');
   const end = body.lastIndexOf('```');
   if (start >= 0 && end > start) {
-    const inside = body.slice(start + 3, end).trim(); // "json\n{...}" 가능
+    const inside = body.slice(start + 3, end).trim();
     const jsonStart = inside.indexOf('{');
     const jsonEnd = inside.lastIndexOf('}');
     if (jsonStart >= 0 && jsonEnd > jsonStart) {
@@ -41,7 +41,7 @@ function parsePayloadFromBody(body?: string) {
   return {};
 }
 
-/** CSV 생성 (BOM 포함 → 엑셀 한글 깨짐 방지) */
+/** CSV (BOM 포함) */
 function toCSV(rows: string[][]) {
   const BOM = '\uFEFF';
   const esc = (v: any) => {
@@ -53,6 +53,17 @@ function toCSV(rows: string[][]) {
   return BOM + csv;
 }
 
+/** 수동 타임아웃 fetch (8초) */
+async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function handler(req: Request) {
   try {
     if (!ensureAdmin(req)) {
@@ -62,39 +73,63 @@ export default async function handler(req: Request) {
     }
 
     const url = getUrl(req);
-    // 디버그 빠른 확인용: probe=1 이면 GH 호출 건너뛴다 (걸림 여부 즉시 체크)
+
+    // ❶ 초고속 진단: 외부 호출 전 즉시 리턴
     if ((url.searchParams.get('probe') || '') === '1') {
       return new Response(JSON.stringify({ ok: true, probe: true }), {
         status: 200, headers: { 'Content-Type': 'application/json' }
       });
     }
 
+    // ❷ 오프라인 모의 데이터 모드(네트워크 우회) : dry=1
+    if ((url.searchParams.get('dry') || '') === '1') {
+      const demo = [
+        { number: 1, title: '[전화] 홍길동 900101-1******', created_at: new Date().toISOString(), site: 'teeth', type: 'phone', name: '홍길동', phone: '010-1234-5678', birth: '900101' },
+      ];
+      const format = (url.searchParams.get('format') || 'json').toLowerCase();
+      const downloadFlag = (url.searchParams.get('download') || '').toLowerCase();
+      const dl = ['1','true','yes'].includes(downloadFlag);
+      if (format === 'csv') {
+        const header = ['number','title','created_at','site','type','name','phone','birth'];
+        const rows = [header, ...demo.map(r => [String(r.number), r.title, r.created_at, r.site, r.type, r.name, r.phone, r.birth])];
+        const csv = toCSV(rows);
+        return new Response(csv, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            ...(dl ? { 'Content-Disposition': `attachment; filename="leads-demo.csv"` } : {}),
+          },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true, count: demo.length, items: demo }), {
+        status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }
+      });
+    }
+
     const format = (url.searchParams.get('format') || 'json').toLowerCase(); // json|csv
     const downloadFlag = (url.searchParams.get('download') || '').toLowerCase();
-    const dl = ['1', 'true', 'yes'].includes(downloadFlag);
+    const dl = ['1','true','yes'].includes(downloadFlag);
 
-    // 선택 필터
-    const siteFilter = url.searchParams.get('site') || ''; // e.g. teeth
-    const typeFilter = url.searchParams.get('type') || ''; // phone|online
+    const siteFilter = url.searchParams.get('site') || '';
+    const typeFilter = url.searchParams.get('type') || '';
 
-    // GitHub Issues (최대 100) — 타임아웃/UA 추가로 '무한대기' 차단
-    const ghRes = await fetch(
+    // GitHub Issues 가져오기 (수동 8초 타임아웃 + UA)
+    const ghRes = await fetchWithTimeout(
       `https://api.github.com/repos/${GH_REPO_FULLNAME}/issues?state=open&per_page=100&sort=created&direction=desc`,
       {
         headers: {
           Authorization: `Bearer ${GH_TOKEN}`,
           Accept: 'application/vnd.github+json',
-          'User-Agent': 'lead-inbox-export/1.0',   // 일부 환경에서 필수
+          'User-Agent': 'lead-inbox-export/1.1'
         },
         cache: 'no-store',
-        // 8초 타임아웃: 응답 지연 시 바로 에러로 떨어뜨림
-        signal: AbortSignal.timeout(8000),
-      }
+      },
+      8000
     );
 
     if (!ghRes.ok) {
-      const text = await ghRes.text();
-      return new Response(JSON.stringify({ ok: false, error: 'GitHub fetch failed', detail: text }), {
+      const text = await ghRes.text().catch(()=>'');
+      return new Response(JSON.stringify({ ok: false, error: 'GitHub fetch failed', detail: text || ghRes.statusText }), {
         status: 500, headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -126,12 +161,10 @@ export default async function handler(req: Request) {
       });
 
     if (format === 'csv') {
-      const header = ['number', 'title', 'created_at', 'site', 'type', 'name', 'phone', 'birth'];
-      const rows = [header, ...items.map(r => [
-        String(r.number), r.title, r.created_at, r.site, r.type, r.name, r.phone, r.birth,
-      ])];
+      const header = ['number','title','created_at','site','type','name','phone','birth'];
+      const rows = [header, ...items.map(r => [String(r.number), r.title, r.created_at, r.site, r.type, r.name, r.phone, r.birth])];
       const csv = toCSV(rows);
-      const filename = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+      const filename = `leads-${new Date().toISOString().slice(0,10)}.csv`;
       return new Response(csv, {
         status: 200,
         headers: {
@@ -141,13 +174,11 @@ export default async function handler(req: Request) {
       });
     }
 
-    // 기본(JSON)
     return new Response(JSON.stringify({ ok: true, count: items.length, items }), {
       status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }
     });
 
   } catch (err: any) {
-    // 타임아웃/네트워크 에러도 여기로 옴
     return new Response(JSON.stringify({
       ok: false,
       error: 'Internal error',
