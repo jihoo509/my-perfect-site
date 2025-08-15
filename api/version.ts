@@ -1,12 +1,19 @@
+// api/version.ts
 export const config = { runtime: 'nodejs' };
 
-export default async function handler() {
-  const ver = {
+export default async function handler(req: Request) {
+  const data = {
+    ok: true,
     ts: new Date().toISOString(),
-    commit: process.env.VERCEL_GIT_COMMIT_SHA || 'unknown',
-    url: process.env.VERCEL_URL || 'unknown',
+    commit: process.env.VERCEL_GIT_COMMIT_SHA || null,
+    route: new URL(req.url).pathname
   };
-  return new Response(JSON.stringify({ ok: true, ver }), {
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store'
+    }
   });
 }
