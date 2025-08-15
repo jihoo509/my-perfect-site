@@ -1,13 +1,15 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// api/admin/ping.ts
+export const config = { runtime: 'nodejs' };
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
-  res.status(200).json({
-    ok: true,
-    env: {
-      hasGH_TOKEN: !!process.env.GH_TOKEN,
-      repo: process.env.GH_REPO_FULLNAME || null,
-      hasADMIN_TOKEN: !!process.env.ADMIN_TOKEN,
-    },
-    node: process.version,
-  });
+export default async function handler(req: Request) {
+  const u = new URL(req.url);
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      ts: new Date().toISOString(),
+      path: u.pathname,
+      token: u.searchParams.get('token') ?? null,
+    }),
+    { headers: { 'content-type': 'application/json; charset=utf-8' } }
+  );
 }
