@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const { GH_TOKEN, GH_REPO_FULLNAME, ADMIN_TOKEN, VITE_SITE_ID } = process.env;
+const { GH_TOKEN, GH_REPO_FULLNAME, ADMIN_TOKEN } = process.env;
 
-// --------- utils ----------
+/* ---------------------- utils ---------------------- */
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -19,15 +19,76 @@ function pickLabel(labels: any[] = [], prefix: string) {
   return hit ? String(hit.name).slice(prefix.length) : '';
 }
 
+const KST = 9 * 60; // minutes
+function toKST(iso: string) {
+  const d = new Date(iso);
+  const tz = d.getTimezoneOffset(); // minutes
+  const kstMs = d.getTime() + (tz + KST) * 60_000;
+  const k = new Date(kstMs);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${k.getFullYear()}-${pad(k.getMonth() + 1)}-${pad(k.getDate())} ${pad(k.getHours())}:${pad(k.getMinutes())}:${pad(k.getSeconds())}`;
+}
+
+function onlyDigits(s: string | undefined) {
+  return (s || '').replace(/\D/g, '');
+}
+
+function normalizePhone(a?: string, b?: string) {
+  const digits = onlyDigits([a, b].filter(Boolean).join(''));
+  if (!digits) return '';
+  // 앞자리가 0으로 시작해도 보존되도록 CSV용 포맷
+  return `="${digits}"`;
+}
+
+function normalizeBirthOrRRN(v?: string) {
+  const d = onlyDigits(v);
+  if (!d) return { birth: '', rrnMasked: '' };
+
+  // 13자리(주민번호) → 앞6 + -******* , 성별코드 추출
+  if (/^\d{13}$/.test(d)) {
+    return {
+      birth: d.slice(0, 6),
+      rrnMasked: `${d.slice(0, 6)}-*******`,
+      genderFromRRN: d[6],
+    } as any;
+  }
+  // 하이픈 없이 붙은 주민번호류(>=12자리)
+  if (d.length >= 12) {
+    return {
+      birth: d.slice(0, 6),
+      rrnMasked: `${d.slice(0, 6)}-*******`,
+      genderFromRRN: d[6],
+    } as any;
+  }
+  // YYYYMMDD(8) 또는 YYMMDD(6)
+  if (/^\d{8}$/.test(d) || /^\d{6}$/.test(d)) {
+    return { birth: d, rrnMasked: '' };
+  }
+  return { birth: '', rrnMasked: '' };
+}
+
+function koGender(val?: string, genderFromRRN?: string) {
+  const v = (val || '').toLowerCase();
+  if (/(남|male|m)\b/.test(v)) return '남';
+  if (/(여|female|f)\b/.test(v)) return '여';
+  // 주민번호 뒷자리 첫 숫자: 1,3,5,7 → 남 / 2,4,6,8 → 여
+  if (genderFromRRN) {
+    return '1357'.includes(genderFromRRN) ? '남' : '여';
+  }
+  return '';
+}
+
 /**
- * 본문에서 리드 페이로드 추출:
- * 1) ``` ... ``` 코드블록 안의 JSON을 우선 시도
- * 2) 실패하면 "키: 값" 형태 라인들을 파싱해 name/phone/birth/type 추출
+ * 본문에서 폼 데이터 파싱
+ * - ``` ``` 안 JSON 우선
+ * - 실패 시 "키: 값" 라인 스캔 (국문/영문 키 혼용)
+ * - 온라인분석(주민번호) vs 전화상담(생년월일) 자동 구분
  */
 function parsePayloadFromBody(body?: string) {
-  if (!body) return {} as any;
+  const out: any = {};
+  if (!body) return out;
 
-  // 1) 코드블록(JSON) 우선
+  // 1) fenced JSON 우선
   const s = body.indexOf('```');
   const e = body.lastIndexOf('```');
   if (s >= 0 && e > s) {
@@ -36,44 +97,53 @@ function parsePayloadFromBody(body?: string) {
     const je = inside.lastIndexOf('}');
     if (js >= 0 && je > js) {
       try {
-        return JSON.parse(inside.slice(js, je + 1));
-      } catch { /* ignore */ }
+        const j = JSON.parse(inside.slice(js, je + 1));
+        // 직관적인 키 동기화
+        const name  = j.name ?? j.이름 ?? '';
+        const phone = j.phone ?? j.전화 ?? j.연락처 ?? '';
+        const birthRaw =
+          j.birth ?? j.birthDate ?? j.생년월일 ?? j.주민번호 ?? j.주민등록번호 ?? '';
+        const rrnBack = j.주민번호뒷자리 ?? j.뒷7자리 ?? '';
+
+        const { birth, rrnMasked, genderFromRRN } = normalizeBirthOrRRN(
+          String(birthRaw || '') + String(rrnBack || '')
+        );
+        const gender = koGender(j.gender ?? j.성별, genderFromRRN);
+
+        // 타입 감지
+        let type = j.type ?? j.유형 ?? '';
+        if (!type) type = rrnMasked ? 'online' : (birth ? 'phone' : '');
+
+        Object.assign(out, { name, phone, birth, rrnMasked, gender, type });
+        return out;
+      } catch {/* ignore */}
     }
   }
 
-  // 2) "키: 값" 라인 파싱 (한국어 키워드 포함)
-  const out: any = {};
+  // 2) "키: 값" 라인 파싱 (국문/영문 키 섞여도 허용)
   const lines = body.split(/\r?\n/);
-  for (const raw of lines) {
-    const line = raw.trim();
-    // 한글 콜론/영문 콜론 모두 허용
-    const m = line.match(/^([^:：]+)\s*[:：]\s*(.+)$/);
-    if (!m) continue;
-
-    const key = m[1].trim();
-    const val = m[2].trim();
-
-    if (/이름|성명|name/i.test(key)) {
-      out.name = val;
-      continue;
-    }
-    if (/(전화|연락처|휴대폰|휴대전화|핸드폰|phone)/i.test(key)) {
-      out.phone = val.replace(/[^\d+]/g, '');
-      continue;
-    }
-    if (/(주민번호|생년월일|출생|birth|dob)/i.test(key)) {
-      const digits = val.replace(/\D/g, '');
-      // YYYYMMDD가 보이면 8자리, 아니면 YYMMDD(6자리)라도 채움
-      if (digits.length >= 8) out.birth = digits.slice(0, 8);
-      else if (digits.length >= 6) out.birth = digits.slice(0, 6);
-      continue;
-    }
-    if (/타입|유형|type/i.test(key) && !out.type) {
-      out.type = val;
-      continue;
-    }
+  const kv: Record<string, string> = {};
+  for (const ln of lines) {
+    const m = ln.match(/^\s*([^\s:]+)\s*[:：]\s*(.+?)\s*$/);
+    if (m) kv[m[1].trim()] = m[2].trim();
   }
 
+  const name  = kv['이름'] ?? kv['name'] ?? '';
+  const phone = kv['전화'] ?? kv['연락처'] ?? kv['phone'] ?? '';
+  const birthRaw =
+    kv['주민번호'] ?? kv['주민등록번호'] ??
+    kv['생년월일'] ?? kv['birth'] ?? kv['birthDate'] ?? '';
+  const rrnBack = kv['뒷7자리'] ?? kv['주민번호뒷자리'] ?? '';
+
+  const { birth, rrnMasked, genderFromRRN } = normalizeBirthOrRRN(
+    String(birthRaw || '') + String(rrnBack || '')
+  );
+  const gender = koGender(kv['성별'] ?? kv['gender'], genderFromRRN);
+
+  let type = kv['type'] ?? kv['유형'] ?? '';
+  if (!type) type = rrnMasked ? 'online' : (birth ? 'phone' : '');
+
+  Object.assign(out, { name, phone, birth, rrnMasked, gender, type });
   return out;
 }
 
@@ -86,7 +156,7 @@ function toCSV(rows: string[][]) {
   const csv = rows.map(r => r.map(esc).join(',')).join('\n');
   return BOM + csv;
 }
-// --------------------------
+/* --------------------------------------------------- */
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1) 관리자 토큰 검사
@@ -124,32 +194,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4) 가공
     const items = issues.map(it => {
+      const site = pickLabel(it.labels, 'site:') || 'teeth';
+      const typeRaw = pickLabel(it.labels, 'type:'); // phone | online
       const payload = parsePayloadFromBody(it.body);
-      const site = pickLabel(it.labels, 'site:') || (VITE_SITE_ID ?? '');
-      const type = pickLabel(it.labels, 'type:') || (payload.type ?? '');
+
+      const type = (payload.type || typeRaw || '').toLowerCase();
+      const typeKo = type === 'online' ? '온라인분석'
+                    : type === 'phone'  ? '전화상담'
+                    : (type || '');
+
+      // 전화 국번/나머지 합쳐 입력된 경우도 포괄
+      const phoneExcel = normalizePhone(payload.phone);
+
+      // 주민번호 우선, 없으면 생년월일
+      const birthOrRRN = payload.rrnMasked || payload.birth || '';
 
       return {
-        number: it.number,
-        title: it.title,
-        created_at: it.created_at,
         site,
-        type,
-        name: payload.name ?? '',
-        phone: payload.phone ?? payload.phoneNumber ?? '',
-        birth: payload.birth ?? payload.birthDate ?? '',
-        labels: Array.isArray(it.labels) ? it.labels.map((l: any) => l.name) : [],
+        requested_at: toKST(it.created_at), // KST
+        request_type: typeKo,
+        name: payload.name || '',
+        birth_or_rrn: birthOrRRN,
+        gender: payload.gender || '',
+        phone: phoneExcel,
       };
     }).filter(r => {
       if (siteFilter && r.site !== siteFilter) return false;
-      if (typeFilter && r.type !== typeFilter) return false;
+      if (typeFilter) {
+        const t = typeFilter.toLowerCase();
+        if (t === 'phone' && r.request_type !== '전화상담') return false;
+        if (t === 'online' && r.request_type !== '온라인분석') return false;
+      }
       return true;
     });
 
     // 5) 응답
     if (format === 'csv') {
-      const header = ['number', 'title', 'created_at', 'site', 'type', 'name', 'phone', 'birth'];
+      const header = ['site', 'requested_at', 'request_type', 'name', 'birth_or_rrn', 'gender', 'phone'];
       const rows = [header, ...items.map(r => [
-        String(r.number), r.title, r.created_at, r.site, r.type, r.name, r.phone, r.birth,
+        r.site, r.requested_at, r.request_type, r.name, r.birth_or_rrn, r.gender, r.phone,
       ])];
       const csv = toCSV(rows);
       const filename = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
