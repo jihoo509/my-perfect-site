@@ -1,29 +1,41 @@
-// api/submit.ts
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 export const config = { runtime: 'nodejs' };
 
 type SubmitBody = {
   type: 'phone' | 'online';
-  site?: string;              // 폼에서 넘겨줌 (없으면 fallback)
+  site?: string;
   name?: string;
-  phone?: string;             // 010-xxxx-xxxx 형태 권장
-  birth?: string;             // YYMMDD (앞 6자리만)
+  phone?: string;
+  birth?: string;
   gender?: '남' | '여';
 };
 
-const GH_TOKEN = process.env.GH_TOKEN!;
-const GH_REPO_FULLNAME = process.env.GH_REPO_FULLNAME!; // e.g. "jihoo509/lead-inbox"
+const { GH_TOKEN, GH_REPO_FULLNAME } = process.env;
 
-export default async function handler(req: Request) {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ ok: false, error: 'POST only' }), { status: 405 });
-  }
+// 타임아웃 기능이 포함된 fetch 함수
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 8000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
 
-  let body: SubmitBody;
   try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid JSON' }), { status: 400 });
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
   }
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ ok: false, error: 'POST only' });
+  }
+
+  // Vercel 환경에서는 req.body를 바로 사용합니다.
+  const body: SubmitBody = req.body;
 
   const {
     type,
@@ -35,14 +47,12 @@ export default async function handler(req: Request) {
   } = body;
 
   if (!type || !['phone', 'online'].includes(type)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid type' }), { status: 400 });
+    return res.status(400).json({ ok: false, error: 'Invalid type' });
   }
 
   // 제목(마스킹)
-  const maskedBirth = birth ? `${birth?.slice(0, 6)}-*******` : '';
-  const title = type === 'phone'
-    ? `[전화] ${name || ''} ${gender || ''} ${maskedBirth}`
-    : `[온라인] ${name || ''} ${gender || ''} ${maskedBirth}`;
+  const maskedBirth = birth ? `${birth.slice(0, 6)}-*******` : '생년월일 미입력';
+  const title = `[${type === 'phone' ? '전화' : '온라인'}] ${name || '이름 미입력'} / ${gender || '성별 미선택'} / ${maskedBirth}`;
 
   // GitHub Issue 라벨
   const labels = [`type:${type}`, `site:${site}`];
@@ -50,31 +60,41 @@ export default async function handler(req: Request) {
   // 원본 데이터(JSON)를 본문에 저장 (백틱 코드블록)
   const payload = {
     site, type, name, phone, birth, gender,
-    ua: (req.headers.get('user-agent') || '').slice(0, 200),
+    ua: (req.headers['user-agent'] || '').slice(0, 200),
+    ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
     createdAt: new Date().toISOString(),
   };
-  const issueBody = '```json\n' + JSON.stringify(payload) + '\n```';
+  const issueBody = '```json\n' + JSON.stringify(payload, null, 2) + '\n```';
 
-  // GitHub Issue 생성
-  const resp = await fetch(`https://api.github.com/repos/${GH_REPO_FULLNAME}/issues`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${GH_TOKEN}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/vnd.github+json',
-    },
-    body: JSON.stringify({
-      title,
-      body: issueBody,
-      labels,
-    }),
-  });
+  try {
+    // GitHub Issue 생성 (8초 타임아웃 적용)
+    const resp = await fetchWithTimeout(`https://api.github.com/repos/${GH_REPO_FULLNAME}/issues`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GH_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({
+        title,
+        body: issueBody,
+        labels,
+      }),
+    });
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    return new Response(JSON.stringify({ ok: false, error: 'GitHub error', detail: text }), { status: 500 });
+    if (!resp.ok) {
+      const text = await resp.text();
+      return res.status(500).json({ ok: false, error: 'GitHub error', detail: text });
+    }
+
+    const issue = await resp.json();
+    return res.status(200).json({ ok: true, number: issue.number });
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ ok: false, error: 'Gateway Timeout from GitHub API' });
+    }
+    return res.status(500).json({ ok: false, error: 'Internal Server Error', detail: error.message });
   }
-
-  const issue = await resp.json();
-  return new Response(JSON.stringify({ ok: true, number: issue.number }), { status: 200 });
 }
