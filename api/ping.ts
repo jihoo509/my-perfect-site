@@ -1,15 +1,9 @@
-// api/admin/ping.ts
-export const config = { runtime: 'nodejs' };
+// api/ping.ts
+export const config = { runtime: 'nodejs' }; // 유지해도 되고 없어도 됩니다.
 
-export default async function handler(req: Request) {
-  const u = new URL(req.url);
+export default async function handler(_req: Request) {
   return new Response(
-    JSON.stringify({
-      ok: true,
-      ts: new Date().toISOString(),
-      path: u.pathname,
-      token: u.searchParams.get('token') ?? null,
-    }),
-    { headers: { 'content-type': 'application/json; charset=utf-8' } }
+    JSON.stringify({ ok: true, ts: new Date().toISOString() }),
+    { status: 200, headers: { 'content-type': 'application/json; charset=utf-8' } }
   );
 }
