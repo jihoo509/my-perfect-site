@@ -1,97 +1,123 @@
 // api/admin/export.ts
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+export const config = { runtime: 'nodejs' };
 
-const GH = (path: string) =>
-  `https://api.github.com/repos/${process.env.GH_REPO_FULLNAME}${path}`;
+const GH_TOKEN = process.env.GH_TOKEN!;
+const GH_REPO_FULLNAME = process.env.GH_REPO_FULLNAME!;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN!;
 
-function toCsv(rows: any[]): string {
-  if (!rows.length) return 'number,title,created_at,site,type,name,phone,birth\n';
-  const header = ['number','title','created_at','site','type','name','phone','birth'];
-  const esc = (v: any) => {
-    const s = (v ?? '').toString();
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const body = rows.map(r => header.map(k => esc(r[k])).join(',')).join('\n');
-  return header.join(',') + '\n' + body + '\n';
+function ensureAdmin(req: Request) {
+  const url = new URL(req.url);
+  const token = url.searchParams.get('token');
+  if (!token || token !== ADMIN_TOKEN) {
+    return false;
+  }
+  return true;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  try {
-    if (!process.env.ADMIN_TOKEN || req.query.token !== process.env.ADMIN_TOKEN) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+function pickLabel(labels: any[], prefix: string) {
+  const hit = labels?.find((l: any) => typeof l.name === 'string' && l.name.startsWith(prefix));
+  return hit ? String(hit.name).slice(prefix.length) : '';
+}
+
+function parsePayloadFromBody(body?: string) {
+  if (!body) return {};
+  // ```json ... ``` 사이 JSON 추출
+  const start = body.indexOf('```');
+  const end = body.lastIndexOf('```');
+  if (start >= 0 && end > start) {
+    const inside = body.slice(start + 3, end).trim();
+    // inside 가 "json\n{...}" 형태일 수도 있음
+    const jsonStart = inside.indexOf('{');
+    const jsonEnd = inside.lastIndexOf('}');
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+      try {
+        return JSON.parse(inside.slice(jsonStart, jsonEnd + 1));
+      } catch {}
     }
+  }
+  return {};
+}
 
-    const qSite = (req.query.site ?? '').toString().trim();   // e.g. 'teeth'
-    const qType = (req.query.type ?? '').toString().trim();   // 'online' | 'phone' | ''
-    const from = (req.query.from ?? '').toString().trim();    // YYYY-MM-DD
-    const to   = (req.query.to   ?? '').toString().trim();    // YYYY-MM-DD
-    const format = (req.query.format ?? 'csv').toString().toLowerCase(); // 'csv' | 'json'
+function toCSV(rows: string[][]) {
+  // 한글 깨짐 방지 BOM
+  const BOM = '\uFEFF';
+  const esc = (v: any) => {
+    const s = v == null ? '' : String(v);
+    if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+  const csv = rows.map(r => r.map(esc).join(',')).join('\n');
+  return BOM + csv;
+}
 
-    const labels: string[] = [];
-    if (qSite) labels.push(`site:${qSite}`);
-    if (qType) labels.push(`type:${qType}`);
+export default async function handler(req: Request) {
+  if (!ensureAdmin(req)) {
+    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401 });
+  }
 
-    const url = GH(`/issues?state=all&per_page=100${labels.length ? `&labels=${encodeURIComponent(labels.join(','))}` : ''}`);
+  const url = new URL(req.url);
+  const format = (url.searchParams.get('format') || 'json').toLowerCase(); // json|csv
+  const dl = url.searchParams.get('download') === '1';
 
-    const r = await fetch(url, {
+  // 선택: 필터 값
+  const siteFilter = url.searchParams.get('site') || '';   // e.g. teeth
+  const typeFilter = url.searchParams.get('type') || '';   // phone|online
+
+  // 이슈 목록 가져오기 (최대 100)
+  const gh = await fetch(`https://api.github.com/repos/${GH_REPO_FULLNAME}/issues?state=open&per_page=100&sort=created&direction=desc`, {
+    headers: { Authorization: `Bearer ${GH_TOKEN}`, 'Accept': 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
+  if (!gh.ok) {
+    const text = await gh.text();
+    return new Response(JSON.stringify({ ok: false, error: 'GitHub fetch failed', detail: text }), { status: 500 });
+  }
+  const issues = await gh.json();
+
+  const items = (issues as any[]).map(it => {
+    const site = pickLabel(it.labels, 'site:');
+    const type = pickLabel(it.labels, 'type:');
+    const payload = parsePayloadFromBody(it.body);
+
+    return {
+      number: it.number,
+      title: it.title,
+      created_at: it.created_at,
+      site,
+      type,
+      name: payload.name || '',
+      phone: payload.phone || '',
+      birth: payload.birth || '',
+      labels: Array.isArray(it.labels) ? it.labels.map((l: any) => l.name) : [],
+      payload,
+    };
+  }).filter(row => {
+    if (siteFilter && row.site !== siteFilter) return false;
+    if (typeFilter && row.type !== typeFilter) return false;
+    return true;
+  });
+
+  if (format === 'csv') {
+    const header = ['number', 'title', 'created_at', 'site', 'type', 'name', 'phone', 'birth'];
+    const rows = [header, ...items.map(r => [
+      String(r.number), r.title, r.created_at, r.site, r.type, r.name, r.phone, r.birth,
+    ])];
+    const csv = toCSV(rows);
+    const filename = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+    return new Response(csv, {
+      status: 200,
       headers: {
-        Authorization: `Bearer ${process.env.GH_TOKEN}`,
-        'User-Agent': 'vercel-fn',
-        Accept: 'application/vnd.github+json',
+        'Content-Type': 'text/csv; charset=utf-8',
+        ...(dl ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {}),
       },
     });
-
-    if (!r.ok) {
-      const text = await r.text();
-      console.error('GitHub export error:', r.status, text);
-      return res.status(500).json({ ok: false, error: 'GitHub API error', status: r.status, detail: text });
-    }
-
-    const raw = await r.json();
-    let items = (Array.isArray(raw) ? raw : [])
-      .filter((it: any) => !it.pull_request)
-      .map((it: any) => {
-        let payload: any = {};
-        try { if (it.body) payload = JSON.parse(it.body); } catch {}
-        // 라벨 파싱
-        const labels = (it.labels || []).map((l: any) => l.name);
-        const siteLabel = labels.find((n: string) => n.startsWith('site:')) || '';
-        const typeLabel = labels.find((n: string) => n.startsWith('type:')) || '';
-        return {
-          number: it.number,
-          title: it.title,
-          created_at: it.created_at,
-          site: siteLabel.replace('site:', ''),
-          type: typeLabel.replace('type:', ''),
-          name: payload.name || '',
-          phone: payload.phone || '',
-          birth: payload.birth || payload.birthDate || '',
-          labels,
-          payload,
-        };
-      });
-
-    // 날짜 필터(옵션)
-    if (from) {
-      const fromTs = Date.parse(from);
-      items = items.filter(i => Date.parse(i.created_at) >= fromTs);
-    }
-    if (to) {
-      const toTs = Date.parse(to) + 24*60*60*1000 - 1; // inclusive
-      items = items.filter(i => Date.parse(i.created_at) <= toTs);
-    }
-
-    if (format === 'json') {
-      return res.status(200).json({ ok: true, count: items.length, items });
-    }
-
-    // CSV (기본)
-    const csv = toCsv(items);
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
-    return res.status(200).send(csv);
-  } catch (err: any) {
-    console.error('admin/export error:', err?.stack || err);
-    return res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
+
+  // 기본(JSON)
+  return new Response(JSON.stringify({ ok: true, count: items.length, items }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
 }
