@@ -1,60 +1,81 @@
 // api/admin/list.ts
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+export const config = { runtime: 'nodejs' };
 
-const GH = (path: string) =>
-  `https://api.github.com/repos/${process.env.GH_REPO_FULLNAME}${path}`;
+const GH_TOKEN = process.env.GH_TOKEN ?? '';
+const GH_REPO_FULLNAME = process.env.GH_REPO_FULLNAME ?? '';
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? '';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+function buildURL(req: Request) {
+  return new URL(req.url, `https://${process.env.VERCEL_URL || 'localhost'}`);
+}
+
+function ensureAdmin(req: Request) {
+  const url = buildURL(req);
+  const token = url.searchParams.get('token');
+  return token && token === ADMIN_TOKEN;
+}
+
+async function ghJson(url: string, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    if (!process.env.ADMIN_TOKEN || req.query.token !== process.env.ADMIN_TOKEN) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
-
-    const qSite = (req.query.site ?? '').toString().trim();   // e.g. 'teeth'
-    const qType = (req.query.type ?? '').toString().trim();   // 'online' | 'phone' | ''
-    const labels: string[] = [];
-    if (qSite) labels.push(`site:${qSite}`);
-    if (qType) labels.push(`type:${qType}`);
-
-    // state=all, PR 제외용 filter, 최대 100건(필요 시 페이지네이션 추가)
-    const url = GH(`/issues?state=all&per_page=100${labels.length ? `&labels=${encodeURIComponent(labels.join(','))}` : ''}`);
-
-    const r = await fetch(url, {
+    const res = await fetch(url, {
+      signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${process.env.GH_TOKEN}`,
-        'User-Agent': 'vercel-fn',
+        Authorization: `Bearer ${GH_TOKEN}`,
         Accept: 'application/vnd.github+json',
+        'User-Agent': 'lead-inbox-vercel',
       },
+      cache: 'no-store',
     });
-
-    if (!r.ok) {
-      const text = await r.text();
-      console.error('GitHub list error:', r.status, text);
-      return res.status(500).json({ ok: false, error: 'GitHub API error', status: r.status, detail: text });
+    const text = await res.text();
+    if (!res.ok) {
+      return { ok: false, status: res.status, text };
     }
-
-    const raw = await r.json();
-    const items = (Array.isArray(raw) ? raw : [])
-      // PR은 제외
-      .filter((it: any) => !it.pull_request)
-      .map((it: any) => {
-        let payload: any = {};
-        try {
-          if (it.body) payload = JSON.parse(it.body);
-        } catch {}
-        return {
-          id: it.id,
-          number: it.number,
-          title: it.title,
-          created_at: it.created_at,
-          labels: (it.labels || []).map((l: any) => l.name),
-          payload,
-        };
-      });
-
-    return res.status(200).json({ ok: true, count: items.length, items });
-  } catch (err: any) {
-    console.error('admin/list error:', err?.stack || err);
-    return res.status(500).json({ ok: false, error: String(err?.message || err) });
+    return { ok: true, json: JSON.parse(text) };
+  } catch (e: any) {
+    return { ok: false, status: 599, text: e?.name === 'AbortError' ? 'timeout' : String(e) };
+  } finally {
+    clearTimeout(t);
   }
+}
+
+export default async function handler(req: Request) {
+  if (!ensureAdmin(req)) {
+    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
+  }
+
+  if (!GH_TOKEN || !GH_REPO_FULLNAME) {
+    return new Response(JSON.stringify({ ok: false, error: 'Missing env' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
+  }
+
+  const api =
+    `https://api.github.com/repos/${GH_REPO_FULLNAME}/issues` +
+    `?state=open&per_page=50&sort=created&direction=desc`;
+
+  const r = await ghJson(api);
+  if (!r.ok) {
+    return new Response(JSON.stringify({ ok: false, error: 'GitHub fetch failed', detail: r.text, status: r.status }), {
+      status: 502,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
+  }
+
+  const list = (r.json as any[]).map((it) => ({
+    id: it.id,
+    number: it.number,
+    title: it.title,
+    created_at: it.created_at,
+    labels: Array.isArray(it.labels) ? it.labels.map((l: any) => l.name) : [],
+  }));
+
+  return new Response(JSON.stringify({ ok: true, count: list.length, items: list }), {
+    headers: { 'content-type': 'application/json; charset=utf-8' },
+  });
 }
