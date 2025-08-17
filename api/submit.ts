@@ -1,5 +1,6 @@
 // api/submit.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 export const config = { runtime: 'nodejs' };
 
 type SubmitBody = {
@@ -7,19 +8,17 @@ type SubmitBody = {
   site?: string;
   name?: string;
   phone?: string;
+  // 전화상담
+  birth?: string;            // YYMMDD or YYYYMMDD
+  // 온라인분석
+  rrnFront?: string;         // YYMMDD
+  rrnBack?: string;          // 7자리(숫자)
   gender?: '남' | '여';
-
-  // phone 전용
-  birth?: string; // YYMMDD 또는 YYYYMMDD
-
-  // online 전용
-  rrnFront?: string; // 6자리
-  rrnBack?: string;  // 7자리(받아도 본문에는 마스킹해서 저장)
 };
 
 const { GH_TOKEN, GH_REPO_FULLNAME } = process.env;
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 15000) {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 8000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -29,84 +28,69 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
   }
 }
 
-// 숫자만, 길이 제한
-const onlyDigits = (v = '') => String(v).replace(/\D/g, '');
-const cut = (v = '', n: number) => v.slice(0, n);
-
-function maskRrn(front?: string, back?: string) {
-  const f = cut(onlyDigits(front), 6);   // 6
-  const b = cut(onlyDigits(back), 7);    // 7
-  if (f.length < 6) return '';
-  const head = b ? b.charAt(0) : '';     // 성별/세대 첫 글자
-  return `${f}-${head ? head + '******' : '*******'}`;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // 필드가 body(JSON)로 오게 확정 (프론트는 POST JSON)
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'POST only' });
   }
 
-  const body = (req.body || {}) as SubmitBody;
+  const body: SubmitBody = req.body || {};
   const {
     type,
     site = 'teeth',
     name = '',
     phone = '',
+    birth = '',
+    rrnFront = '',
+    rrnBack = '',
     gender,
-    birth,          // phone
-    rrnFront,       // online
-    rrnBack,        // online
   } = body;
 
   if (!type || !['phone', 'online'].includes(type)) {
     return res.status(400).json({ ok: false, error: 'Invalid type' });
   }
 
-  // 화면용 표시값
-  const masked =
-    type === 'online'
-      ? maskRrn(rrnFront, rrnBack)
-      : onlyDigits(birth);
+  // ----- 표시용 값(엑셀/제목에 쓰임) -----
+  const clean = (s: string) => (s || '').replace(/\D/g, '');
+  let birthOrRrnMasked = '';
+  if (type === 'phone') {
+    const b6 = clean(birth).slice(-6);               // YYMMDD만
+    birthOrRrnMasked = b6;                           // 그대로 표시
+  } else {
+    const f6 = clean(rrnFront).slice(0, 6);
+    const b7 = clean(rrnBack).slice(0, 7);
+    birthOrRrnMasked = f6 ? `${f6}-${b7 ? b7[0] + '******' : '*******'}` : '';
+  }
 
-  const title = `[${type === 'phone' ? '전화' : '온라인'}] ${name || '이름 미입력'} / ${gender || '성별 미선택'} / ${masked || '생년/주민 미입력'}`;
+  const title = `[${type === 'phone' ? '전화' : '온라인'}] ${name || '이름 미입력'} / ${gender || '성별 미선택'} / ${birthOrRrnMasked}`;
 
-  // 이슈 라벨
-  const labels = [`type:${type}`, `site:${site}`];
-
-  // GitHub 본문: 민감한 값은 마스킹만 저장(뒤 7자리 전체 저장 금지)
+  // ----- 본문(payload) 저장: 뒤 7자리는 평문 저장 금지 -----
   const payload = {
     site, type, name, phone, gender,
-    // phone
-    birth: onlyDigits(birth),
-    // online
-    rrnFront: cut(onlyDigits(rrnFront), 6),
-    rrnBackMasked: rrnBack ? (cut(onlyDigits(rrnBack), 1) + '******') : undefined,
-    // 공통
-    birthOrRrnMasked: masked,
-    ua: (req.headers['user-agent'] || '').toString().slice(0, 200),
-    ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(),
-    createdAt: new Date().toISOString(),
+    // 전화상담
+    birth: type === 'phone' ? clean(birth).slice(-6) : undefined,  // YYMMDD
+    // 온라인분석(필요하면 해시 추가 가능)
+    rrnFront: type === 'online' ? clean(rrnFront).slice(0, 6) : undefined,
+    rrnBackMasked: type === 'online' ? (clean(rrnBack) ? clean(rrnBack)[0] + '******' : undefined) : undefined,
+    // 공통 표시용
+    birthOrRrnMasked,
+    requestedAt: new Date().toISOString(),
+    ua: (req.headers['user-agent'] || '').slice(0, 200),
+    ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
   };
+
   const issueBody = '```json\n' + JSON.stringify(payload, null, 2) + '\n```';
 
   try {
-    const resp = await fetchWithTimeout(
-      `https://api.github.com/repos/${GH_REPO_FULLNAME}/issues`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GH_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          // 일부 네트워크에서 필요한 경우가 있어 User-Agent 지정
-          'User-Agent': 'vercel-submit-function',
-        },
-        body: JSON.stringify({ title, body: issueBody, labels }),
+    const resp = await fetchWithTimeout(`https://api.github.com/repos/${GH_REPO_FULLNAME}/issues`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GH_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
       },
-      15000
-    );
+      body: JSON.stringify({ title, body: issueBody, labels: [`type:${type}`, `site:${site}`] }),
+    });
 
     if (!resp.ok) {
       const text = await resp.text();
@@ -115,10 +99,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const issue = await resp.json();
     return res.status(200).json({ ok: true, number: issue.number });
-  } catch (error: any) {
-    if (error?.name === 'AbortError') {
+  } catch (e: any) {
+    if (e?.name === 'AbortError') {
       return res.status(504).json({ ok: false, error: 'Gateway Timeout from GitHub API' });
     }
-    return res.status(500).json({ ok: false, error: 'Internal Server Error', detail: error?.message || String(error) });
+    return res.status(500).json({ ok: false, error: 'Internal Server Error', detail: e?.message });
   }
 }
