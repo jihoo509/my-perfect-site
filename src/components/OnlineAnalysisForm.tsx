@@ -13,8 +13,8 @@ const SITE_ID = import.meta.env.VITE_SITE_ID ?? 'teeth';
 export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    birthDateFirst: '',    // 앞 6자리
-    birthDateSecond: '',  // 뒤 7자리 (서버에는 미전송)
+    birthDateFirst: '',
+    birthDateSecond: '',
     gender: '',
     phoneNumber: '',
     agreedToTerms: false,
@@ -50,19 +50,24 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
       agreedToTerms: false,
     });
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault(); // form 태그 사용 시 기본 동작 방지
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
+      // --- 이 부분이 수정되었습니다 ---
+      // 서버가 기대하는 rrnFront와 rrnBack 이름으로 데이터를 보냅니다.
       const payload = {
         type: 'online' as const,
         site: SITE_ID,
         name: formData.name.trim(),
         phone: `010-${(formData.phoneNumber || '').trim()}`,
-        birth: (formData.birthDateFirst || '').slice(0, 6), // 앞 6자리만 저장
+        rrnFront: formData.birthDateFirst.trim(),
+        rrnBack: formData.birthDateSecond.trim(),
         gender: formData.gender as '남' | '여' | '',
       };
+      // --- 여기까지 수정되었습니다 ---
 
       const res = await fetch('/api/submit', {
         method: 'POST',
@@ -100,7 +105,6 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
           `,
         }}
       >
-        {/* 헤더 */}
         <div className="text-center space-y-1.5 mb-5">
           <p className="text-white text-[22px] md:text-2xl font-extrabold tracking-tight drop-shadow-[0_1px_10px_rgba(0,0,0,.30)]">
             한 눈에 비교 분석할 수 있는
@@ -110,9 +114,9 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
           </p>
           {title && <p className="mt-2 text-white/85 text-[13px] md:text-sm">{title}</p>}
         </div>
-
-        {/* 폼 */}
-        <div className="space-y-3">
+        
+        {/* form 태그로 감싸고 onSubmit 이벤트를 사용합니다. */}
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-2">
             <label className="text-white text-base block">이름</label>
             <Input
@@ -141,6 +145,7 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               <Input
                 ref={birthDateSecondInputRef}
                 placeholder="뒤 7자리"
+                type="password"
                 value={formData.birthDateSecond}
                 onChange={e => handleInputChange('birthDateSecond', e.target.value)}
                 onFocus={() => handleInputFocus(birthDateSecondInputRef)}
@@ -210,6 +215,7 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               </label>
             </div>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => setShowPrivacyDialog(true)}
@@ -221,7 +227,7 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
 
           <div className="pt-2">
             <Button
-              onClick={handleSubmit}
+              type="submit"
               disabled={
                 !formData.name ||
                 !formData.birthDateFirst ||
@@ -236,7 +242,7 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               {isSubmitting ? '신청 중...' : '온라인분석 신청하기'}
             </Button>
           </div>
-        </div>
+        </form>
       </div>
 
       <PrivacyPolicyDialog isOpen={showPrivacyDialog} onClose={() => setShowPrivacyDialog(false)} />
