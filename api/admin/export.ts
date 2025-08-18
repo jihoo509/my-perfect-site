@@ -41,7 +41,7 @@ function toCSV(rows: string[][]) {
   const BOM = '\uFEFF';
   const esc = (v: any) => {
     const s = v == null ? '' : String(v);
-    return /["\n,]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    return /["\n,"].test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return BOM + rows.map(r => r.map(esc).join(',')).join('\n');
 }
@@ -73,13 +73,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const site = pickLabel(it.labels, 'site:') || payload.site || 'N/A';
       const type = pickLabel(it.labels, 'type:') || payload.type;
 
-      // '전화상담'과 '온라인 분석' 데이터를 안전하게 처리
+      // --- 이 부분이 수정되었습니다 ---
       let birthOrRrn = '';
-      if (type === 'online' && payload.rrnFront) {
-        birthOrRrn = `${payload.rrnFront}-${(payload.rrnBack || '').charAt(0)}******`;
-      } else if (type === 'phone' && payload.birth) {
-        birthOrRrn = payload.birth;
+      if (type === 'online') {
+        // 온라인 분석: rrnFront와 rrnBack을 조합하여 마스킹
+        const front = payload.rrnFront || '';
+        const back = payload.rrnBack || '';
+        if (front && back) {
+          birthOrRrn = `${front}-${back.charAt(0)}******`;
+        } else {
+          birthOrRrn = front;
+        }
+      } else if (type === 'phone') {
+        // 전화 상담: birth 값을 그대로 사용
+        birthOrRrn = payload.birth || '';
       }
+      // --- 여기까지 수정되었습니다 ---
 
       return {
         site: site,
