@@ -27,15 +27,29 @@ function toKST(isoString: string) {
 }
 
 function parsePayloadFromBody(body?: string) {
-  if (!body) return {};
-  const match = body.match(/```json\n([\s\S]*?)\n```/);
-  if (match && match[1]) {
+  if (!body) return {} as any;
+
+  // 1) ```json 또는 ``` 뒤에 CR/LF 어떤 줄바꿈이 와도 매치
+  const fence = /```(?:json)?\r?\n([\s\S]*?)\r?\n```/i;
+  const m = fence.exec(body);
+  if (m && m[1]) {
     try {
-      return JSON.parse(match[1]);
-    } catch { return {}; }
+      return JSON.parse(m[1]);
+    } catch { /* ignore */ }
   }
-  return {};
+
+  // 2) 백틱 펜스가 비표준일 때를 대비한 백업 파서: 첫 { ... } 블록 파싱
+  const s = body.indexOf('{');
+  const e = body.lastIndexOf('}');
+  if (s >= 0 && e > s) {
+    try {
+      return JSON.parse(body.slice(s, e + 1));
+    } catch { /* ignore */ }
+  }
+
+  return {} as any;
 }
+
 
 function toCSV(rows: string[][]) {
   const BOM = '\uFEFF';
@@ -73,9 +87,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const site = pickLabel(it.labels, 'site:') || payload.site || 'N/A';
       const type = pickLabel(it.labels, 'type:') || payload.type;
 
-      // --- 여기가 생년월일/주민번호 및 전화번호 문제를 해결하는 핵심 로직입니다 ---
+      // --- 여기가 생년월일/주민번호 문제를 해결하는 핵심 로직입니다 ---
       let birthOrRrn = '';
       if (type === 'online') {
+        // 온라인 분석: rrnFront와 rrnBack 필드를 찾아서 조합합니다.
         const front = payload.rrnFront || '';
         const back = payload.rrnBack || '';
         if (front && back) {
@@ -84,12 +99,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           birthOrRrn = front;
         }
       } else if (type === 'phone') {
+        // 전화 상담: birth 필드를 찾아서 사용합니다.
         birthOrRrn = payload.birth || '';
-      }
-      
-      let phone = payload.phone || '';
-      if (phone && phone.length > 8 && !phone.startsWith('010-')) {
-          phone = `010-${phone.slice(-8)}`;
       }
       // --- 여기까지 수정되었습니다 ---
 
@@ -100,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: payload.name || '',
         birth_or_rrn: birthOrRrn,
         gender: payload.gender || '',
-        phone: phone,
+        phone: payload.phone || '',
       };
     });
 
