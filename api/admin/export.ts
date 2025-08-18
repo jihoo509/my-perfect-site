@@ -21,9 +21,8 @@ function pickLabel(labels: any[] = [], prefix: string) {
 function toKST(isoString: string) {
   if (!isoString) return '';
   const date = new Date(isoString);
-  // Vercel 서버 시간과 한국 시간의 시차를 직접 계산하지 않고,
-  // new Date()가 ISO 문자열을 UTC로 올바르게 해석하도록 신뢰합니다.
-  const kstDate = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstDate = new Date(date.getTime() + kstOffset);
   return kstDate.toISOString().replace('T', ' ').slice(0, 19);
 }
 
@@ -46,8 +45,8 @@ function toCSV(rows: string[][]) {
   };
   return BOM + rows.map(r => r.map(esc).join(',')).join('\n');
 }
-// --- 메인 핸들러 ---
 
+// --- 메인 핸들러 ---
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = req.query.token as string;
   if (token !== ADMIN_TOKEN) {
@@ -77,17 +76,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // --- 이 부분이 수정되었습니다 ---
       let birthOrRrn = '';
       if (type === 'online') {
-        // 온라인 분석: rrnFront와 rrnBack을 조합
+        // 온라인 분석: rrnFront와 rrnBack을 조합하여 마스킹
         const front = payload.rrnFront || '';
         const back = payload.rrnBack || '';
         if (front && back) {
           birthOrRrn = `${front}-${back.charAt(0)}******`;
+        } else {
+          // rrnFront만 있는 경우도 처리
+          birthOrRrn = front;
         }
       } else if (type === 'phone') {
-        // 전화 상담: birth 값을 사용
+        // 전화 상담: birth 값을 그대로 사용
         birthOrRrn = payload.birth || '';
       }
-
+      
       let phone = payload.phone || '';
       if (phone && phone.startsWith('010') && !phone.startsWith('010-')) {
           phone = `010-${phone.slice(3)}`;
