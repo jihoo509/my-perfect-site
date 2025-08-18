@@ -74,10 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const type = pickLabel(it.labels, 'type:') || payload.type;
       
       // --- 여기가 생년월일/주민번호 문제를 해결하는 최종 로직입니다 ---
-      // payload에 rrnFull이 있으면 (온라인분석) 그걸 쓰고, 없으면 birth6를 씁니다.
-      const birthOrRrn = payload.rrnFull 
-        ? `${payload.rrnFull.slice(0, 8)}******` 
-        : (payload.birth6 || '');
+      // GitHub에 저장된 'rrnFull' 또는 'birth6' 값을 직접 사용합니다.
+      const birthOrRrn = payload.rrnFull || payload.birth6 || '';
       // --- 여기까지 수정되었습니다 ---
 
       return {
