@@ -41,7 +41,6 @@ function toCSV(rows: string[][]) {
   const BOM = '\uFEFF';
   const esc = (v: any) => {
     const s = v == null ? '' : String(v);
-    // 아래 줄의 정규식이 올바르게 수정되었습니다.
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return BOM + rows.map(r => r.map(esc).join(',')).join('\n');
@@ -86,6 +85,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else if (type === 'phone') {
         birthOrRrn = payload.birth || '';
       }
+      
+      let phone = payload.phone || '';
+      if (phone && phone.length > 8 && !phone.startsWith('010-')) {
+          phone = `010-${phone.slice(-8)}`;
+      }
 
       return {
         site: site,
@@ -94,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: payload.name || '',
         birth_or_rrn: birthOrRrn,
         gender: payload.gender || '',
-        phone: payload.phone || '',
+        phone: phone,
       };
     });
 
