@@ -19,7 +19,7 @@ function pickLabel(labels: any[] | undefined, prefix: string) {
   return hit ? String(hit.name).slice(prefix.length) : '';
 }
 
-// --- 여기가 핵심: 한국 시간 변환 함수 ---
+// 한국 시간 변환 함수
 function toKST(isoString: string) {
     if (!isoString) return '';
     const date = new Date(isoString);
@@ -27,7 +27,6 @@ function toKST(isoString: string) {
     const kstDate = new Date(date.getTime() + kstOffset);
     return kstDate.toISOString().replace('T', ' ').slice(0, 19);
 }
-// ------------------------------------
 
 function parsePayloadFromBody(body?: string) {
   if (!body || typeof body !== 'string') return {};
@@ -87,28 +86,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const site = pickLabel(it.labels, 'site:') || payload.site || '';
       const type = pickLabel(it.labels, 'type:') || payload.type || '';
       const request_type = type === 'online' ? '온라인분석' : (type === 'phone' ? '전화상담' : '');
-      
-      // --- 여기가 핵심: requested_at 값을 toKST 함수로 변환 ---
-      const requested_at = toKST(payload.requestedAt || it.created_at || '');
-      // ----------------------------------------------------
 
+      const requested_at = toKST(payload.requestedAt || it.created_at || '');
       const name = payload.name || '';
-      
-      // --- 원래의 정상 작동하던 로직을 그대로 사용 ---
+
+      // --- 여기가 생년월일/주민번호 문제를 해결하는 핵심 로직입니다 ---
       let birth_or_rrn = '';
-      if (type === 'online') {
-        const front = payload.rrnFront || '';
+      if (type === 'online' && payload.rrnFront) {
         const back = payload.rrnBack || '';
-        if (front && back) {
-          birth_or_rrn = `${front}-${back.charAt(0)}******`;
-        } else {
-          birth_or_rrn = front;
-        }
-      } else if (type === 'phone') {
-        birth_or_rrn = payload.birth || '';
+        birth_or_rrn = `${payload.rrnFront}-${back ? `${back.charAt(0)}******` : ''}`;
+      } else if (type === 'phone' && payload.birth) {
+        birth_or_rrn = payload.birth;
       }
-      // ---------------------------------------------
-      
+      // --- 여기까지 수정되었습니다 ---
+
       const gender = payload.gender || '';
       const phone = payload.phone || '';
 
@@ -122,6 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ])];
       const csv = toCSV(rows);
       const filename = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       if (wantDownload) res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       return res.status(200).send(csv);
