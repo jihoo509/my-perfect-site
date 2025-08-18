@@ -41,12 +41,13 @@ function toCSV(rows: string[][]) {
   const BOM = '\uFEFF';
   const esc = (v: any) => {
     const s = v == null ? '' : String(v);
-    return /["\n,"].test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    // 아래 줄의 정규식이 올바르게 수정되었습니다.
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return BOM + rows.map(r => r.map(esc).join(',')).join('\n');
 }
-// --- 메인 핸들러 ---
 
+// --- 메인 핸들러 ---
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = req.query.token as string;
   if (token !== ADMIN_TOKEN) {
@@ -73,10 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const site = pickLabel(it.labels, 'site:') || payload.site || 'N/A';
       const type = pickLabel(it.labels, 'type:') || payload.type;
 
-      // --- 이 부분이 수정되었습니다 ---
       let birthOrRrn = '';
       if (type === 'online') {
-        // 온라인 분석: rrnFront와 rrnBack을 조합하여 마스킹
         const front = payload.rrnFront || '';
         const back = payload.rrnBack || '';
         if (front && back) {
@@ -85,10 +84,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           birthOrRrn = front;
         }
       } else if (type === 'phone') {
-        // 전화 상담: birth 값을 그대로 사용
         birthOrRrn = payload.birth || '';
       }
-      // --- 여기까지 수정되었습니다 ---
 
       return {
         site: site,
