@@ -51,7 +51,7 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
     try {
       const payload = {
         type: 'phone' as const,
-        site: 'insurance-comparison', // 사이트 고유 ID
+        site: 'teeth', // 사이트 고유 ID
         name: formData.name.trim(),
         phone: `010-${(formData.phoneNumber || '').trim()}`,
         birth: formData.birthDate.trim(),
