@@ -72,27 +72,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const payload = parsePayloadFromBody(it.body) as any;
       const site = pickLabel(it.labels, 'site:') || payload.site || 'N/A';
       const type = pickLabel(it.labels, 'type:') || payload.type;
-      
-      // --- 이 부분이 수정되었습니다 ---
+
+      // --- 여기가 생년월일/주민번호 문제를 해결하는 핵심 로직입니다 ---
       let birthOrRrn = '';
       if (type === 'online') {
-        // 온라인 분석: rrnFront와 rrnBack을 조합하여 마스킹
+        // 온라인 분석: rrnFront와 rrnBack 필드를 찾아서 조합합니다.
         const front = payload.rrnFront || '';
         const back = payload.rrnBack || '';
         if (front && back) {
           birthOrRrn = `${front}-${back.charAt(0)}******`;
         } else {
-          // rrnFront만 있는 경우도 처리
           birthOrRrn = front;
         }
       } else if (type === 'phone') {
-        // 전화 상담: birth 값을 그대로 사용
+        // 전화 상담: birth 필드를 찾아서 사용합니다.
         birthOrRrn = payload.birth || '';
-      }
-      
-      let phone = payload.phone || '';
-      if (phone && phone.startsWith('010') && !phone.startsWith('010-')) {
-          phone = `010-${phone.slice(3)}`;
       }
       // --- 여기까지 수정되었습니다 ---
 
@@ -103,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: payload.name || '',
         birth_or_rrn: birthOrRrn,
         gender: payload.gender || '',
-        phone: phone,
+        phone: payload.phone || '',
       };
     });
 
