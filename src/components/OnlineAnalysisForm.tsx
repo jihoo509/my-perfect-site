@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { PrivacyPolicyDialog } from './PrivacyPolicyDialog';
+import UtmHiddenFields from './UtmHiddenFields'; // ✨ 1. UTM 컴포넌트 불러오기
 
 interface OnlineAnalysisFormProps {
   title?: string;
@@ -48,11 +49,15 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
       agreedToTerms: false,
     });
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => { // ✨ 2. event 타입 수정
     event.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
     
+    // ✨ 3. 숨겨진 UTM 필드를 포함한 모든 폼 데이터 읽어오기
+    const form = event.currentTarget;
+    const formElements = Object.fromEntries(new FormData(form).entries());
+
     const now = new Date();
     const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
 
@@ -66,6 +71,9 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
         rrnBack: formData.birthDateSecond.trim(),
         gender: formData.gender as '남' | '여' | '',
         requestedAt: kstDate.toISOString(),
+        
+        // ✨ 4. 읽어온 UTM 데이터를 payload에 추가
+        ...formElements
       };
 
       const res = await fetch('/api/submit', {
@@ -115,6 +123,9 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-3">
+          {/* ✨ 5. 비밀 입력 칸(UTM 정보)을 폼 안에 추가 */}
+          <UtmHiddenFields />
+
           <div className="space-y-2">
             <label className="text-white text-base block">이름</label>
             <Input
