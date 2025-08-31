@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = { runtime: 'nodejs' };
 
+// ✨ 1. SubmitBody 타입에 UTM 필드들을 추가합니다.
 type SubmitBody = {
   type: 'phone' | 'online';
   site?: string;
@@ -9,12 +10,23 @@ type SubmitBody = {
   phone?: string;
 
   // 전화상담 폼
-  birth?: string;          // YYMMDD
+  birth?: string;
 
   // 온라인 분석 폼
-  rrnFront?: string;       // YYMMDD
-  rrnBack?: string;        // 7자리
+  rrnFront?: string;
+  rrnBack?: string;
   gender?: '남' | '여';
+
+  // UTM 필드
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  landing_page?: string;
+  referrer?: string;
+  first_utm?: string;
+  last_utm?: string;
 };
 
 const { GH_TOKEN, GH_REPO_FULLNAME } = process.env;
@@ -39,43 +51,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const type = body.type;
   const site = body.site || 'teeth';
   const name = body.name || '';
-  const phone = body.phone || '';
   const gender = body.gender;
 
   if (!type || (type !== 'phone' && type !== 'online')) {
     return res.status(400).json({ ok: false, error: 'Invalid type' });
   }
 
-  // ① 전화상담: birth(YYMMDD)
+  // 제목 생성 로직은 기존과 동일
   const birth6 = type === 'phone' ? (body.birth || '') : (body.rrnFront || '');
-
-  // ② 온라인분석: rrnFront + rrnBack → 900101-1234567
   const rrnFull =
     type === 'online' && body.rrnFront && body.rrnBack
       ? `${body.rrnFront}-${body.rrnBack}`
       : '';
-
-  // 제목은 개인정보 노출 줄이기 위해 마스킹(엑셀은 풀로 보냄 — 아래 export.ts에서)
   const masked = rrnFull ? `${rrnFull.slice(0, 8)}******` : (birth6 ? `${birth6}-*******` : '생년월일 미입력');
   const requestKo = type === 'phone' ? '전화' : '온라인';
   const title = `[${requestKo}] ${name || '이름 미입력'} / ${gender || '성별 미선택'} / ${masked}`;
 
-  // 깃허브 라벨
   const labels = [`type:${type}`, `site:${site}`];
 
-  // 원본 페이로드(엑셀은 여기 값을 씀)
+  // ✨ 2. payload 생성 방식을 수정하여, form에서 보낸 모든 정보(UTM 포함)를 받도록 합니다.
   const payload = {
-    site,
-    type,
-    name,
-    phone,
-    gender,
-    birth6,     // 전화상담 생년월일(또는 온라인의 앞6)
-    rrnFull,    // 온라인분석 주민번호 13자리(하이픈 포함)
-    requestedAt: new Date().toISOString(),
-    ua: (req.headers['user-agent'] || '').toString().slice(0, 200),
-    ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(),
+    ...body, // form에서 보낸 모든 데이터를 그대로 포함
+    requestedAt: new Date().toISOString(), // 서버 시간 기준 신청 시간 추가
+    ua: (req.headers['user-agent'] || '').toString().slice(0, 200), // 접속 환경 정보 추가
+    ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(), // IP 정보 추가
   };
+  
+  // payload 객체에서 불필요할 수 있는 Vercel 헤더 정보 제거
+  if ('headers' in payload) {
+    delete (payload as any).headers;
+  }
 
   const bodyMd = '```json\n' + JSON.stringify(payload, null, 2) + '\n```';
 
