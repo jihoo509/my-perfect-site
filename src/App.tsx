@@ -254,7 +254,7 @@ export default function App() {
         <div className="text-center mb-8 lg:mb-12">
           <h1 className="hero-title">치아보험 전문가</h1>
           {/* 폰트 굵게 요청 */}
-          <p className="hero-sub font-bold">1:1 무료 매칭 신청</p>
+          <p className="hero-sub font-bold">1:1 상담 신청</p>
         </div>
 
         {/* 데스크톱 레이아웃 */}
