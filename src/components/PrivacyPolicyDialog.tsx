@@ -175,7 +175,7 @@ export default function PrivacyPolicyDialog({ isOpen, onClose, onAgree }: Privac
               }}
               className="h-10 px-4 bg-[#f59e0b] hover:bg-[#d97706] text-white rounded-lg font-medium transition-colors"
             >
-              확인
+              동의하고 닫기
             </button>
           </div>
         </div>
