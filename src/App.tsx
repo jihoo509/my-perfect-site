@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PhoneConsultationForm } from "./components/PhoneConsultationForm";
 import { OnlineAnalysisForm } from "./components/OnlineAnalysisForm";
@@ -16,6 +15,7 @@ import { Label } from "./components/ui/label";
 import { Phone, BarChart3, ArrowDown, Zap, Smartphone } from "lucide-react";
 import consultantImage from "./assets/a6f94ab0ce1420152da6a007d5f5c299abc96741.png";
 import insuranceComparisonImage from "./assets/103b05b4123991615d1e49ebbf7bfdcf94d0f112.png";
+import { Footer } from "./components/Footer"; // ✨ 1. Footer 컴포넌트를 import 합니다.
 
 export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
@@ -121,7 +121,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#1d4ed8] p-4">
+    // ✨ 2. flex-col 클래스를 추가하여 Footer가 항상 하단에 위치하도록 구조를 잡습니다.
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#1d4ed8]">
       {/* 배경 효과 */}
       <div className="absolute inset-0">
         <div
@@ -249,12 +250,12 @@ export default function App() {
       <div className="absolute top-4 left-4 z-20 w-16 h-16 cursor-default opacity-0" onClick={handleHiddenClick} />
 
       {/* 메인 컨텐츠 */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto pt-6 lg:pt-8 container section">
+      {/* ✨ 3. flex-grow를 추가하여 메인 컨텐츠가 남은 공간을 모두 차지하게 만듭니다. */}
+      <main className="relative z-10 w-full max-w-7xl mx-auto pt-6 lg:pt-8 container section flex-grow">
         {/* 상단 제목 */}
-        <div className="text-center mb-8 lg:mb-12">
-          <h1 className="hero-title">치아보험 전문가</h1>
-          {/* 폰트 굵게 요청 */}
-          <p className="hero-sub font-bold">1:1 상담 신청</p>
+        <div className="mb-8 lg:mb-12 flex flex-col items-center gap-y-2">
+          <h1 className="hero-title">치아보험 비교 전문가</h1>
+          <p className="hero-sub text-10xl font-bold">1:1 상담 신청</p>
         </div>
 
         {/* 데스크톱 레이아웃 */}
@@ -272,12 +273,10 @@ export default function App() {
                   </div>
                   전화 상담
                 </h2>
-                {/* 설명 텍스트 굵게 */}
                 <p className="text-white/85 text-lg leading-relaxed font-semibold">
                   전문가와 직접 통화하며 상담 진행
                 </p>
               </div>
-              {/* 얇은 겉패널 제거 버전: form-panel 사용 */}
               <div className="form-panel w-full max-w-[440px]">
                 <PhoneConsultationForm title="아래 이미지 파일 참조." />
               </div>
@@ -553,7 +552,11 @@ export default function App() {
             </div>
           )}
         </div>
-      </div>
+      </main>
+
+      {/* ✨ 4. 페이지의 가장 아래쪽에 Footer 컴포넌트를 추가합니다. */}
+      <Footer />
     </div>
   );
 }
+

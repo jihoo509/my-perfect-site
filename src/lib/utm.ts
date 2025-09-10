@@ -26,7 +26,6 @@ export function readUtm(): Utm {
     referrer: document.referrer || "",
   };
 
-  // first/last touch 저장
   try {
     if (!localStorage.getItem("first_utm") && url.search) {
       localStorage.setItem("first_utm", url.search);

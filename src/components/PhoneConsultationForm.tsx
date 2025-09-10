@@ -3,7 +3,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { PrivacyPolicyDialog } from './PrivacyPolicyDialog';
-import UtmHiddenFields from './UtmHiddenFields'; // ✨ 1. UTM 컴포넌트 불러오기
+import UtmHiddenFields from './UtmHiddenFields';
+import { ContentType } from '../lib/policyContents';
 
 interface PhoneConsultationFormProps {
   title?: string;
@@ -15,10 +16,13 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
     birthDate: '',
     gender: '',
     phoneNumber: '',
-    agreedToTerms: false,
   });
+
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [agreedToThirdParty, setAgreedToThirdParty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContentType, setModalContentType] = useState<ContentType | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const birthDateInputRef = useRef<HTMLInputElement>(null);
@@ -32,37 +36,49 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
     }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const resetForm = () =>
-    setFormData({ name: '', birthDate: '', gender: '', phoneNumber: '', agreedToTerms: false });
+  const resetForm = () => {
+    setFormData({ name: '', birthDate: '', gender: '', phoneNumber: '' });
+    setAgreedToPrivacy(false);
+    setAgreedToThirdParty(false);
+  };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => { // ✨ 2. event 타입 수정
+  const handleOpenModal = (type: ContentType) => {
+    setModalContentType(type);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setModalContentType(null);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
+    if (!agreedToPrivacy || !agreedToThirdParty) {
+      alert('모든 약관에 동의해주셔야 신청이 가능합니다.');
+      return;
+    }
     setIsSubmitting(true);
 
-    // ✨ 3. 숨겨진 UTM 필드를 포함한 모든 폼 데이터 읽어오기
-    const form = event.currentTarget;
-    const formElements = Object.fromEntries(new FormData(form).entries());
-
+    const formElements = Object.fromEntries(new FormData(event.currentTarget).entries());
     const now = new Date();
-    const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+    const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
     try {
       const payload = {
         type: 'phone' as const,
-        site: '치아보험', // 사이트 고유 ID
+        site: '치아보험',
         name: formData.name.trim(),
         phone: `010-${(formData.phoneNumber || '').trim()}`,
         birth: formData.birthDate.trim(),
         gender: formData.gender as '남' | '여' | '',
         requestedAt: kstDate.toISOString(),
-
-        // ✨ 4. 읽어온 UTM 데이터를 payload에 추가
-        ...formElements
+        ...formElements,
       };
 
       const res = await fetch('/api/submit', {
@@ -75,7 +91,6 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || `서버 오류(${res.status})`);
       }
-
       alert('✅ 전화 상담 신청이 정상적으로 접수되었습니다!');
       resetForm();
     } catch (err: any) {
@@ -112,9 +127,8 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* ✨ 5. 비밀 입력 칸(UTM 정보)을 폼 안에 추가 */}
           <UtmHiddenFields />
-          
+
           <div className="space-y-2">
             <label className="text-white text-base block">이름</label>
             <Input
@@ -127,7 +141,6 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
               required
             />
           </div>
-
           <div className="space-y-2">
             <label className="text-white text-base block">생년월일</label>
             <Input
@@ -141,7 +154,6 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
               required
             />
           </div>
-
           <div className="space-y-2">
             <label className="text-white text-base block">성별</label>
             <div className="flex h-12 bg-white rounded-md overflow-hidden">
@@ -171,7 +183,6 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
               </Button>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="text-white text-base block">전화번호</label>
             <div className="flex space-x-2">
@@ -190,27 +201,55 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="phone-terms-agreement"
-                checked={formData.agreedToTerms}
-                onCheckedChange={checked => handleInputChange('agreedToTerms', !!checked)}
-                className="border-white data-[state=checked]:bg-[#f59e0b] data-[state=checked]:border-[#f59e0b]"
-              />
-              <label htmlFor="phone-terms-agreement" className="text-white text-base cursor-pointer">
-                개인정보 수집 및 이용동의
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              {/* ✨ 수정: Checkbox와 텍스트를 Label로 감싸 터치 영역을 보장합니다. */}
+              <label
+                htmlFor="phone-privacy-agreement"
+                className="flex items-center space-x-2 text-white text-base cursor-pointer"
+              >
+                <Checkbox
+                  id="phone-privacy-agreement"
+                  checked={agreedToPrivacy}
+                  onCheckedChange={checked => setAgreedToPrivacy(!!checked)}
+                  className="border-white data-[state=checked]:bg-[#f59e0b] data-[state=checked]:border-[#f59e0b]"
+                />
+                <span>개인정보 수집 및 이용동의</span>
               </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenModal('privacy')}
+                className="bg-white text-gray-800 border-white hover:bg-gray-100 h-8 px-3"
+              >
+                자세히 보기
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPrivacyDialog(true)}
-              className="bg-white text-gray-800 border-white hover:bg-gray-100 h-8 px-3"
-            >
-              자세히 보기
-            </Button>
+            <div className="flex items-center justify-between">
+              {/* ✨ 수정: Checkbox와 텍스트를 Label로 감싸 터치 영역을 보장합니다. */}
+              <label
+                htmlFor="phone-third-party-agreement"
+                className="flex items-center space-x-2 text-white text-base cursor-pointer"
+              >
+                <Checkbox
+                  id="phone-third-party-agreement"
+                  checked={agreedToThirdParty}
+                  onCheckedChange={checked => setAgreedToThirdParty(!!checked)}
+                  className="border-white data-[state=checked]:bg-[#f59e0b] data-[state=checked]:border-[#f59e0b]"
+                />
+                <span>제3자 제공 동의</span>
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenModal('thirdParty')}
+                className="bg-white text-gray-800 border-white hover:bg-gray-100 h-8 px-3"
+              >
+                자세히 보기
+              </Button>
+            </div>
           </div>
 
           <div className="pt-2">
@@ -221,7 +260,8 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
                 !formData.birthDate ||
                 !formData.gender ||
                 !formData.phoneNumber ||
-                !formData.agreedToTerms ||
+                !agreedToPrivacy ||
+                !agreedToThirdParty ||
                 isSubmitting
               }
               className="w-full h-14 bg-[#f59e0b] hover:bg-[#d97706] text-white border-0 rounded-full text-xl disabled:opacity-50 disabled:cursor-not-allowed"
@@ -233,10 +273,19 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
       </div>
 
       <PrivacyPolicyDialog
-  isOpen={showPrivacyDialog}
-  onClose={() => setShowPrivacyDialog(false)}
-  onAgree={() => handleInputChange('agreedToTerms', true)}
-/>
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onAgree={() => {
+          if (modalContentType === 'privacy') {
+            setAgreedToPrivacy(true);
+          } else if (modalContentType === 'thirdParty') {
+            setAgreedToThirdParty(true);
+          }
+        }}
+        formType="phone"
+        contentType={modalContentType}
+      />
     </div>
   );
 }
+

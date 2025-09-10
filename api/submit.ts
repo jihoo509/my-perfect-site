@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = { runtime: 'nodejs' };
 
-// ✨ 1. SubmitBody 타입에 UTM 필드들을 추가합니다.
+// ✨ UTM 필드 추가
 type SubmitBody = {
   type: 'phone' | 'online';
   site?: string;
@@ -10,14 +10,14 @@ type SubmitBody = {
   phone?: string;
 
   // 전화상담 폼
-  birth?: string;
+  birth?: string;          // YYMMDD
 
   // 온라인 분석 폼
-  rrnFront?: string;
-  rrnBack?: string;
+  rrnFront?: string;       // YYMMDD
+  rrnBack?: string;        // 7자리
   gender?: '남' | '여';
 
-  // UTM 필드
+  // UTM & 유입 정보
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: 'Invalid type' });
   }
 
-  // 제목 생성 로직은 기존과 동일
+  // 제목 생성 로직(개인정보 마스킹)
   const birth6 = type === 'phone' ? (body.birth || '') : (body.rrnFront || '');
   const rrnFull =
     type === 'online' && body.rrnFront && body.rrnBack
@@ -69,18 +69,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const labels = [`type:${type}`, `site:${site}`];
 
-  // ✨ 2. payload 생성 방식을 수정하여, form에서 보낸 모든 정보(UTM 포함)를 받도록 합니다.
+  // ✨ form에서 보낸 모든 데이터(UTM 포함)를 payload에 그대로 싣고, 서버 수집 메타 추가
   const payload = {
-    ...body, // form에서 보낸 모든 데이터를 그대로 포함
-    requestedAt: new Date().toISOString(), // 서버 시간 기준 신청 시간 추가
-    ua: (req.headers['user-agent'] || '').toString().slice(0, 200), // 접속 환경 정보 추가
-    ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(), // IP 정보 추가
+    ...body,
+    requestedAt: new Date().toISOString(),
+    ua: (req.headers['user-agent'] || '').toString().slice(0, 200),
+    ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(),
   };
-  
-  // payload 객체에서 불필요할 수 있는 Vercel 헤더 정보 제거
-  if ('headers' in payload) {
-    delete (payload as any).headers;
-  }
 
   const bodyMd = '```json\n' + JSON.stringify(payload, null, 2) + '\n```';
 
