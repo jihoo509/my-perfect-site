@@ -5,6 +5,7 @@ import { Checkbox } from './ui/checkbox';
 import { PrivacyPolicyDialog } from './PrivacyPolicyDialog';
 import UtmHiddenFields from './UtmHiddenFields';
 import { ContentType } from '../lib/policyContents';
+import { Textarea } from './ui/textarea'; // ✨ Textarea 컴포넌트를 import 합니다.
 
 interface OnlineAnalysisFormProps {
   title?: string;
@@ -13,32 +14,24 @@ interface OnlineAnalysisFormProps {
 export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    birthDateFirst: '',
-    birthDateSecond: '',
+    birthDate: '', 
     gender: '',
     phoneNumber: '',
+    notes: '', // ✨ '문의사항'을 위한 상태 추가
   });
 
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [agreedToThirdParty, setAgreedToThirdParty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContentType, setModalContentType] = useState<ContentType | null>(
-    null,
-  );
+  const [modalContentType, setModalContentType] = useState<ContentType | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const birthDateFirstInputRef = useRef<HTMLInputElement>(null);
-  const birthDateSecondInputRef = useRef<HTMLInputElement>(null);
+  const birthDateInputRef = useRef<HTMLInputElement>(null);
   const phoneNumberInputRef = useRef<HTMLInputElement>(null);
 
-  const handleInputFocus = (inputRef: React.RefObject<HTMLInputElement>) => {
+  const handleInputFocus = (inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>) => { // Textarea ref도 처리
     if (inputRef.current && window.innerWidth <= 768) {
-      if (
-        inputRef === birthDateFirstInputRef ||
-        inputRef === birthDateSecondInputRef
-      )
-        return;
       setTimeout(() => {
         inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
@@ -52,10 +45,10 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
   const resetForm = () => {
     setFormData({
       name: '',
-      birthDateFirst: '',
-      birthDateSecond: '',
+      birthDate: '',
       gender: '',
       phoneNumber: '',
+      notes: '', // ✨ 리셋 시 '문의사항'도 초기화
     });
     setAgreedToPrivacy(false);
     setAgreedToThirdParty(false);
@@ -92,9 +85,9 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
         site: '치아보험',
         name: formData.name.trim(),
         phone: `010-${(formData.phoneNumber || '').trim()}`,
-        rrnFront: formData.birthDateFirst.trim(),
-        rrnBack: formData.birthDateSecond.trim(),
+        birth: formData.birthDate.trim(),
         gender: formData.gender as '남' | '여' | '',
+        notes: formData.notes.trim(), // ✨ '문의사항' 데이터 추가
         requestedAt: kstDate.toISOString(),
         ...formElements,
       };
@@ -148,7 +141,7 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <UtmHiddenFields />
-
+          
           <div className="space-y-2">
             <label className="text-white text-base block">이름</label>
             <Input
@@ -161,35 +154,19 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               required
             />
           </div>
-
           <div className="space-y-2">
-            <label className="text-white text-base block">주민번호</label>
-            <div className="flex space-x-2">
-              <Input
-                ref={birthDateFirstInputRef}
-                placeholder="앞 6자리"
-                value={formData.birthDateFirst}
-                onChange={e => handleInputChange('birthDateFirst', e.target.value)}
-                onFocus={() => handleInputFocus(birthDateFirstInputRef)}
-                className="bg-white border-0 h-12 text-gray-800 placeholder:text-gray-500 flex-1"
-                maxLength={6}
-                required
-              />
-              <span className="text-white text-2xl flex items-center">-</span>
-              <Input
-                ref={birthDateSecondInputRef}
-                placeholder="뒤 7자리"
-                type="password"
-                value={formData.birthDateSecond}
-                onChange={e => handleInputChange('birthDateSecond', e.target.value)}
-                onFocus={() => handleInputFocus(birthDateSecondInputRef)}
-                className="bg-white border-0 h-12 text-gray-800 placeholder:text-gray-500 flex-1"
-                maxLength={7}
-                required
-              />
-            </div>
+            <label className="text-white text-base block">생년월일</label>
+            <Input
+              ref={birthDateInputRef}
+              placeholder="생년월일을 입력 (예:19850101)"
+              value={formData.birthDate}
+              onChange={e => handleInputChange('birthDate', e.target.value)}
+              onFocus={() => handleInputFocus(birthDateInputRef)}
+              className="bg-white border-0 h-12 text-gray-800 placeholder:text-gray-500"
+              maxLength={8}
+              required
+            />
           </div>
-
           <div className="space-y-2">
             <label className="text-white text-base block">성별</label>
             <div className="flex h-12 bg-white rounded-md overflow-hidden">
@@ -219,7 +196,6 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               </Button>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="text-white text-base block">전화번호</label>
             <div className="flex space-x-2">
@@ -238,17 +214,25 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
             </div>
           </div>
 
+          {/* ✨ '문의사항' 입력 칸 추가 */}
+          <div className="space-y-2">
+            <label className="text-white text-base block">문의사항 (선택)</label>
+            <Textarea
+              placeholder="궁금한 점이나 특별히 원하는 사항이 있다면 자유롭게 적어주세요."
+              value={formData.notes}
+              onChange={e => handleInputChange('notes', e.target.value)}
+              className="bg-white border-0 text-gray-800 placeholder:text-gray-500"
+              rows={3}
+            />
+          </div>
+          
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              {/* ✨ 수정: Checkbox와 텍스트를 Label로 감싸 터치 영역을 보장합니다. */}
-              <label
-                htmlFor="online-privacy-agreement"
-                className="flex items-center space-x-2 text-white text-base cursor-pointer"
-              >
+              <label htmlFor="online-privacy-agreement" className="flex items-center space-x-2 text-white text-base cursor-pointer">
                 <Checkbox
                   id="online-privacy-agreement"
                   checked={agreedToPrivacy}
-                  onCheckedChange={checked => setAgreedToPrivacy(!!checked)}
+                  onCheckedChange={(checked) => setAgreedToPrivacy(!!checked)}
                   className="border-white data-[state=checked]:bg-[#f59e0b] data-[state=checked]:border-[#f59e0b]"
                 />
                 <span>개인정보 수집 및 이용동의</span>
@@ -264,15 +248,11 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               </Button>
             </div>
             <div className="flex items-center justify-between">
-               {/* ✨ 수정: Checkbox와 텍스트를 Label로 감싸 터치 영역을 보장합니다. */}
-              <label
-                htmlFor="online-third-party-agreement"
-                className="flex items-center space-x-2 text-white text-base cursor-pointer"
-              >
+              <label htmlFor="online-third-party-agreement" className="flex items-center space-x-2 text-white text-base cursor-pointer">
                 <Checkbox
                   id="online-third-party-agreement"
                   checked={agreedToThirdParty}
-                  onCheckedChange={checked => setAgreedToThirdParty(!!checked)}
+                  onCheckedChange={(checked) => setAgreedToThirdParty(!!checked)}
                   className="border-white data-[state=checked]:bg-[#f59e0b] data-[state=checked]:border-[#f59e0b]"
                 />
                 <span>제3자 제공 동의</span>
@@ -294,8 +274,7 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
               type="submit"
               disabled={
                 !formData.name ||
-                !formData.birthDateFirst ||
-                !formData.birthDateSecond ||
+                !formData.birthDate ||
                 !formData.gender ||
                 !formData.phoneNumber ||
                 !agreedToPrivacy ||

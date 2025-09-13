@@ -35,7 +35,7 @@ export function PrivacyPolicyFullDialog({ isOpen, onClose }: PrivacyPolicyFullDi
           <div className="space-y-3">
             <h3 className="font-bold text-base text-gray-900">수집하는 개인정보 항목</h3>
             <div className="pl-4 space-y-1">
-              <p>가. 개인정보 항목 : 성명, 성별, 생년월일, 주민번호, 전화번호</p>
+              <p>가. 개인정보 항목 : 성명, 성별, 생년월일, 전화번호</p>
               <p>나. 수집방법 : 홈페이지 상담신청 시 입력란에 본인이 입력하는 방식</p>
             </div>
           </div>
@@ -47,8 +47,8 @@ export function PrivacyPolicyFullDialog({ isOpen, onClose }: PrivacyPolicyFullDi
               <ul className="list-disc list-inside text-gray-600 space-y-1 pl-2">
                 <li>제공받는자: 프라임에셋 333본부 소속 설계사</li>
                 <li>제공목적: 보험상담 및 가입권유 서비스</li>
-                <li>제공항목: 성명, 성별, 생년월일, 주민번호, 전화번호</li>
-                <li>보유기간: 제공일(수집일)로부터 12개월</li>
+                <li>제공항목: 성명, 성별, 생년월일, 전화번호</li>
+                <li>보유기간: 제공일(수집일)로부터 2개월</li>
               </ul>
             </div>
           </div>
@@ -56,7 +56,7 @@ export function PrivacyPolicyFullDialog({ isOpen, onClose }: PrivacyPolicyFullDi
           <div className="space-y-3">
             <h3 className="font-bold text-base text-gray-900">개인정보의 보유 및 이용기간</h3>
             <p>프라임에셋 333본부 신지후는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에 동의 받은 개인 정보 보유, 이용기간 내에서 개인정보를 처리, 보유합니다.</p>
-            <p className="pl-4">– 개인정보의 보유 및 이용기간 : 수집일로부터 12개월</p>
+            <p className="pl-4">– 개인정보의 보유 및 이용기간 : 수집일로부터 2개월</p>
             <p className="pl-4">(단, 개인정보의 수집 및 이용목적이 달성되면 지체없이 파기하고 이용자가 개인정보의 수집·이용 등에 대한 동의 철회, 개인 정보 삭제 또는 파기 요청이 있는 경우 해당 개인정보를 즉시 파기합니다.)</p>
           </div>
 

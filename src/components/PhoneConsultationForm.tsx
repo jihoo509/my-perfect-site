@@ -5,6 +5,7 @@ import { Checkbox } from './ui/checkbox';
 import { PrivacyPolicyDialog } from './PrivacyPolicyDialog';
 import UtmHiddenFields from './UtmHiddenFields';
 import { ContentType } from '../lib/policyContents';
+import { Textarea } from './ui/textarea'; // ✨ Textarea 컴포넌트를 import 합니다.
 
 interface PhoneConsultationFormProps {
   title?: string;
@@ -16,6 +17,7 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
     birthDate: '',
     gender: '',
     phoneNumber: '',
+    notes: '', // ✨ '문의사항'을 위한 상태 추가
   });
 
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
@@ -28,7 +30,7 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
   const birthDateInputRef = useRef<HTMLInputElement>(null);
   const phoneNumberInputRef = useRef<HTMLInputElement>(null);
 
-  const handleInputFocus = (inputRef: React.RefObject<HTMLInputElement>) => {
+  const handleInputFocus = (inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>) => {
     if (inputRef.current && window.innerWidth <= 768) {
       setTimeout(() => {
         inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -41,7 +43,13 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', birthDate: '', gender: '', phoneNumber: '' });
+    setFormData({ 
+        name: '', 
+        birthDate: '', 
+        gender: '', 
+        phoneNumber: '', 
+        notes: '' // ✨ 리셋 시 '문의사항'도 초기화
+    });
     setAgreedToPrivacy(false);
     setAgreedToThirdParty(false);
   };
@@ -77,6 +85,7 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
         phone: `010-${(formData.phoneNumber || '').trim()}`,
         birth: formData.birthDate.trim(),
         gender: formData.gender as '남' | '여' | '',
+        notes: formData.notes.trim(), // ✨ '문의사항' 데이터 추가
         requestedAt: kstDate.toISOString(),
         ...formElements,
       };
@@ -200,14 +209,22 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
               />
             </div>
           </div>
+          
+          {/* ✨ '문의사항' 입력 칸 추가 */}
+          <div className="space-y-2">
+            <label className="text-white text-base block">문의사항 (선택)</label>
+            <Textarea
+              placeholder="궁금한 점이나 특별히 원하는 사항이 있다면 자유롭게 적어주세요."
+              value={formData.notes}
+              onChange={e => handleInputChange('notes', e.target.value)}
+              className="bg-white border-0 text-gray-800 placeholder:text-gray-500"
+              rows={3}
+            />
+          </div>
 
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              {/* ✨ 수정: Checkbox와 텍스트를 Label로 감싸 터치 영역을 보장합니다. */}
-              <label
-                htmlFor="phone-privacy-agreement"
-                className="flex items-center space-x-2 text-white text-base cursor-pointer"
-              >
+              <label htmlFor="phone-privacy-agreement" className="flex items-center space-x-2 text-white text-base cursor-pointer">
                 <Checkbox
                   id="phone-privacy-agreement"
                   checked={agreedToPrivacy}
@@ -227,11 +244,7 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
               </Button>
             </div>
             <div className="flex items-center justify-between">
-              {/* ✨ 수정: Checkbox와 텍스트를 Label로 감싸 터치 영역을 보장합니다. */}
-              <label
-                htmlFor="phone-third-party-agreement"
-                className="flex items-center space-x-2 text-white text-base cursor-pointer"
-              >
+              <label htmlFor="phone-third-party-agreement" className="flex items-center space-x-2 text-white text-base cursor-pointer">
                 <Checkbox
                   id="phone-third-party-agreement"
                   checked={agreedToThirdParty}
